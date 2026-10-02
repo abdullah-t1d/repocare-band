@@ -1,0 +1,10 @@
+# Arduino build output
+build/
+*.bin
+*.hex
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+.claude/

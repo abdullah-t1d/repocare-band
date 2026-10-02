@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>repoCare Band · لوحة القراءات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF2F3; --sheet:#FAFBFB; --ink:#16232A; --muted:#5D6D75;
+    --rule:#D3DCDF; --pulse:#C3122E; --oxy:#1D6474; --warn:#9A5B00;
+    --grid-minor:rgba(195,18,46,.07); --grid-major:rgba(195,18,46,.16);
+    font-family:"IBM Plex Sans Arabic", system-ui, "Segoe UI", Tahoma, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 40px}
+  .num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-bottom:18px}
+  .brand{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+  .brand small{display:block;font-size:13px;font-weight:400;color:var(--muted)}
+  .status{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:14px}
+  .led{width:9px;height:9px;border-radius:50%;background:#9AA8AE}
+  .led.on{background:#2E8B57}
+  .spacer{flex:1}
+  button{font:inherit;cursor:pointer;border-radius:8px}
+  .primary{background:var(--ink);color:#fff;border:0;padding:10px 20px;font-weight:600}
+  .primary:hover{background:#26363F}
+  button:focus-visible{outline:3px solid var(--oxy);outline-offset:2px}
+
+  .notice{background:#FFF4E0;border:1px solid #F0D3A2;color:#5C3A00;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:14px}
+  .notice[hidden]{display:none}
+
+  /* Monitor: the ECG-paper sheet is the centrepiece */
+  .monitor{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;display:grid;
+    grid-template-columns:260px 1fr;overflow:hidden}
+  .hr{padding:22px 24px;border-inline-end:1px solid var(--rule);display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+  .hr-label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .beat-dot{width:12px;height:12px;border-radius:50%;background:var(--pulse);opacity:.25;transition:opacity .4s}
+  .beat-dot.hit{animation:hit .45s ease-out}
+  @keyframes hit{0%{opacity:1;transform:scale(1.5)}100%{opacity:.25;transform:scale(1)}}
+  .bpm{font-size:clamp(72px,9vw,120px);font-weight:200;line-height:.95;color:var(--pulse);letter-spacing:-.03em}
+  .bpm-unit{font-size:15px;color:var(--muted)}
+  .hint{font-size:14px;color:var(--ink);min-height:42px}
+  .hint.warn{color:var(--warn)}
+  .trace{position:relative;min-height:300px}
+  .trace canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .trace .empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;
+    color:var(--muted);font-size:15px;pointer-events:none}
+  .trace .empty[hidden]{display:none}
+
+  /* Readouts: one strip divided by rules, not separate cards */
+  .readouts{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px;background:var(--sheet);
+    border:1px solid var(--rule);border-radius:14px}
+  .ro{padding:16px 20px;border-inline-start:1px solid var(--rule)}
+  .ro:first-child{border-inline-start:0}
+  .ro h2{margin:0 0 4px;font-size:14px;font-weight:600;color:var(--muted)}
+  .ro .val{font-size:34px;font-weight:400;line-height:1.1}
+  .ro .val span{font-size:15px;color:var(--muted);margin-inline-start:4px}
+  .ro p{margin:6px 0 0;font-size:12.5px;color:var(--muted)}
+  .oxy{color:var(--oxy)}
+  .qbar{height:6px;background:#E2E8EA;border-radius:3px;margin-top:10px;overflow:hidden}
+  .qbar i{display:block;height:100%;width:0;background:var(--oxy);transition:width .4s}
+
+  .lower{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-top:14px}
+  .panel{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:16px 20px}
+  .panel h2{margin:0 0 10px;font-size:15px;font-weight:600}
+  .trend{position:relative;height:170px}
+  .trend canvas{position:absolute;inset:0;width:100%;height:100%}
+  .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
+  .seg{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:transparent;padding:8px 12px;font-size:14px;color:var(--ink)}
+  .seg button+button{border-inline-start:1px solid var(--rule)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  .ghost{background:transparent;border:1px solid var(--rule);padding:8px 14px;font-size:14px;color:var(--ink)}
+  .ghost.rec{border-color:var(--pulse);color:var(--pulse)}
+  .raw{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px;margin:0}
+  .raw dt{color:var(--muted)}
+  .raw dd{margin:0}
+  .log{margin-top:12px;font-size:12.5px;color:var(--muted);max-height:60px;overflow:auto}
+  footer{margin-top:18px;font-size:12.5px;color:var(--muted)}
+
+  @media (max-width:860px){
+    .monitor{grid-template-columns:1fr}
+    .hr{border-inline-end:0;border-bottom:1px solid var(--rule)}
+    .trace{min-height:240px}
+    .readouts{grid-template-columns:repeat(2,1fr)}
+    .ro:nth-child(3){border-inline-start:0}
+    .ro:nth-child(n+3){border-top:1px solid var(--rule)}
+    .lower{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){.beat-dot.hit{animation:none;opacity:1}.qbar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="brand">repoCare Band<small>قراءات حساس النبض MAX30102 مباشرة</small></h1>
+    <div class="status"><span class="led" id="led"></span><span id="statusText">غير متصل</span></div>
+    <div class="spacer"></div>
+    <button class="primary" id="connectBtn">اتصال بالسوار</button>
+  </header>
+
+  <div class="notice" id="unsupported" hidden>
+    هذا المتصفح ما يدعم الاتصال عبر USB. افتح الملف في Chrome أو Edge على الكمبيوتر.
+  </div>
+  <div class="notice" id="errorBox" hidden></div>
+
+  <section class="monitor" aria-label="النبض">
+    <div class="hr">
+      <div class="hr-label"><span class="beat-dot" id="beatDot"></span>معدل النبض</div>
+      <div>
+        <div class="bpm num" id="bpm">--</div>
+        <div class="bpm-unit">نبضة في الدقيقة</div>
+      </div>
+      <div class="hint" id="hint">وصّل السوار بالكمبيوتر واضغط «اتصال بالسوار».</div>
+    </div>
+    <div class="trace">
+      <canvas id="traceCanvas" aria-label="موجة النبض الحية"></canvas>
+      <div class="empty" id="traceEmpty">موجة النبض تظهر هنا بعد الاتصال</div>
+    </div>
+  </section>
+
+  <section class="readouts">
+    <div class="ro">
+      <h2>الأكسجين في الدم</h2>
+      <div class="val oxy"><b class="num" id="spo2">--</b><span>%</span></div>
+      <p>تقدير تجريبي غير معاير</p>
+    </div>
+    <div class="ro">
+      <h2>تقلب النبض (HRV)</h2>
+      <div class="val"><b class="num" id="hrv">--</b><span>ms</span></div>
+      <p>RMSSD من آخر 10 نبضات</p>
+    </div>
+    <div class="ro">
+      <h2>جودة الإشارة</h2>
+      <div class="val" id="qText" style="font-size:24px">--</div>
+      <div class="qbar"><i id="qBar"></i></div>
+    </div>
+    <div class="ro">
+      <h2>حرارة شريحة الحساس</h2>
+      <div class="val"><b class="num" id="temp">--</b><span>°C</span></div>
+      <p>حرارة الحساس نفسه، مو حرارة الجسم</p>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div class="panel">
+      <h2>النبض خلال آخر دقيقتين</h2>
+      <div class="trend"><canvas id="trendCanvas" aria-label="مخطط النبض"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>التحكم</h2>
+      <div class="row">
+        <span style="font-size:14px;color:var(--muted)">شدة الإضاءة</span>
+        <div class="seg" id="ledSeg">
+          <button data-l="a" aria-pressed="true">تلقائي</button>
+          <button data-l="1" aria-pressed="false">1</button>
+          <button data-l="2" aria-pressed="false">2</button>
+          <button data-l="3" aria-pressed="false">3</button>
+          <button data-l="4" aria-pressed="false">4</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="resetBtn">إعادة القياس</button>
+        <button class="ghost" id="recBtn">بدء التسجيل</button>
+        <button class="ghost" id="saveBtn" disabled>حفظ CSV</button>
+      </div>
+      <dl class="raw">
+        <dt>IR</dt><dd class="num" id="rawIr">--</dd>
+        <dt>RED</dt><dd class="num" id="rawRed">--</dd>
+        <dt>نبضات محسوبة</dt><dd class="num" id="beats">0</dd>
+        <dt>قوة النبض (PI)</dt><dd class="num" id="pi">--</dd>
+        <dt>تيار الإضاءة</dt><dd class="num" id="ledma">--</dd>
+      </dl>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <footer>نموذج أولي لمشروع تخرج، وليس جهازًا طبيًا. الإضاءة التلقائية تختار أقوى إشارة بدون تشبع.</footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const N = 600;                         // 6 s at 100 samples/s
+  const ppg = new Float32Array(N);
+  let head = 0, sampleNo = 0;
+  const beatMarks = [];                  // sample numbers of detected beats
+  const trend = [];                      // {t, bpm}
+  let port = null, reader = null, keepReading = false;
+  let lastIr = 0, lastRed = 0, lastBpm = -1, lastSpo2 = -1, finger = false, connected = false;
+  let recording = false, rows = [], pendingBeat = 0, lastQ = 0, lastLevel = 'auto', lastPi = -1, lastMotion = 0, lastMa = 0;
+  const enc = new TextEncoder();
+
+  if (!('serial' in navigator)) { $('unsupported').hidden = false; $('connectBtn').disabled = true; }
+
+  // ---------- Serial ----------
+  $('connectBtn').addEventListener('click', () => connected ? disconnect() : connect());
+
+  async function connect() {
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      setConnected(true);
+      keepReading = true;
+      readLoop();
+    } catch (e) {
+      if (e.name !== 'NotFoundError') showError('تعذّر فتح المنفذ: ' + e.message + ' — سكّر Serial Monitor في Arduino IDE وجرّب مرة ثانية.');
+    }
+  }
+
+  async function disconnect() {
+    keepReading = false;
+    try { if (reader) await reader.cancel(); } catch {}
+    try { if (port) await port.close(); } catch {}
+    setConnected(false);
+  }
+
+  async function readLoop() {
+    const dec = new TextDecoder();
+    let buf = '';
+    while (port && port.readable && keepReading) {
+      reader = port.readable.getReader();
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let i;
+          while ((i = buf.indexOf('\n')) >= 0) { handleLine(buf.slice(0, i).trim()); buf = buf.slice(i + 1); }
+        }
+      } catch (e) {
+        if (keepReading) showError('انقطع الاتصال بالسوار. تأكد من كيبل USB واضغط «اتصال بالسوار».');
+        break;
+      } finally { reader.releaseLock(); }
+    }
+    if (keepReading) disconnect();
+  }
+
+  async function send(ch) {
+    if (!port || !port.writable) return;
+    const w = port.writable.getWriter();
+    try { await w.write(enc.encode(ch)); } finally { w.releaseLock(); }
+  }
+
+  if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => { if (e.target === port) disconnect(); });
+
+  // ---------- Protocol ----------
+  function handleLine(line) {
+    if (!line) return;
+    const c = line[0];
+    if (c === 'S') {
+      const p = line.split(',');
+      lastIr = +p[1]; lastRed = +p[2];
+      ppg[head] = +p[3]; head = (head + 1) % N; sampleNo++;
+      if (sampleNo % 20 === 0) { $('rawIr').textContent = lastIr.toLocaleString('en-US'); $('rawRed').textContent = lastRed.toLocaleString('en-US'); }
+      if (recording) rows.push([Date.now(), p[1], p[2], p[3], pendingBeat, lastBpm, lastSpo2, lastQ, lastLevel, finger ? 1 : 0, lastPi, lastMotion, lastMa].join(','));
+      pendingBeat = 0;
+    } else if (c === 'B') {
+      pendingBeat = 1;
+      beatMarks.push(sampleNo - 15);     // firmware reports the beat 150 ms after its upstroke
+      if (beatMarks.length > 40) beatMarks.shift();
+      const d = $('beatDot'); d.classList.remove('hit'); void d.offsetWidth; d.classList.add('hit');
+    } else if (c === 'M') {
+      metrics(line.split(','));
+    } else if (c === '#') {
+      log(line.slice(1));
+      if (line.startsWith('#ERR')) showError('الحساس غير موجود. تأكد من التوصيل: الأزرق على D4 والأصفر على D5، الأحمر على 3V3 والأسود على GND.');
+      if (line.startsWith('#OK')) hideError();
+    }
+  }
+
+  function metrics(p) {
+    const bpm = +p[1], spo2 = +p[2], rmssd = +p[3], q = +p[5], temp = +p[6], sat = p[8] === '1';
+    const pi = p[10] !== undefined ? +p[10] : -1, motion = p[11] === '1', auto = p[12] === '1', ma = p[13] !== undefined ? +p[13] : 0;
+    const level = auto ? 'a' : String(+p[7]);
+    finger = p[4] === '1';
+    lastBpm = bpm; lastSpo2 = spo2; lastQ = q; lastLevel = auto ? 'auto' : level; lastPi = pi; lastMotion = motion ? 1 : 0; lastMa = ma;
+    $('pi').textContent = pi >= 0 ? pi.toFixed(2) + '%' : '--';
+    $('ledma').textContent = ma > 0 ? ma.toFixed(1) + ' mA' : '--';
+    $('bpm').textContent = bpm > 0 ? Math.round(bpm) : '--';
+    $('spo2').textContent = spo2 > 0 ? Math.round(spo2) : '--';
+    $('hrv').textContent = rmssd > 0 ? Math.round(rmssd) : '--';
+    $('temp').textContent = temp > -90 ? temp.toFixed(1) : '--';
+    $('rawIr').textContent = lastIr.toLocaleString('en-US');
+    $('rawRed').textContent = lastRed.toLocaleString('en-US');
+    $('beats').textContent = p[9] || 0;
+    $('qBar').style.width = q + '%';
+    $('qText').textContent = !finger ? '--' : q >= 75 ? 'ممتازة' : q >= 45 ? 'مقبولة' : 'ضعيفة';
+    $('qBar').style.background = q >= 75 ? 'var(--oxy)' : q >= 45 ? 'var(--warn)' : 'var(--pulse)';
+    document.querySelectorAll('#ledSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.l === level)));
+
+    let hint = '', warn = false;
+    if (sat) { hint = 'الإضاءة قوية والإشارة مشبعة. اختر مستوى إضاءة أقل.'; warn = true; }
+    else if (!finger) hint = 'ضع إصبعك على الحساس بضغط خفيف وثابت.';
+    else if (motion) { hint = 'تحركت يدك. القراءة متوقفة لين تثبت.'; warn = true; }
+    else if (bpm < 0) hint = 'ثبّت يدك على الطاولة ولا تتحرك… جاري حساب النبض.';
+    else if (q < 45) { hint = 'الإشارة ضعيفة. خفف الضغط وثبّت يدك على الطاولة.'; warn = true; }
+    else hint = 'القراءة مستقرة.';
+    $('hint').textContent = hint;
+    $('hint').classList.toggle('warn', warn);
+
+    if (bpm > 0) { trend.push({ t: Date.now(), bpm }); }
+    while (trend.length && Date.now() - trend[0].t > 120000) trend.shift();
+    drawTrend();
+  }
+
+  // ---------- UI ----------
+  function setConnected(on) {
+    connected = on;
+    $('led').classList.toggle('on', on);
+    $('statusText').textContent = on ? 'متصل' : 'غير متصل';
+    $('connectBtn').textContent = on ? 'قطع الاتصال' : 'اتصال بالسوار';
+    $('traceEmpty').hidden = on;
+    if (!on) {
+      $('hint').textContent = 'انقطع الاتصال. وصّل السوار واضغط «اتصال بالسوار».';
+      $('hint').classList.remove('warn');
+      ['bpm','spo2','hrv','temp','rawIr','rawRed','qText','pi','ledma'].forEach(id => $(id).textContent = '--');
+      $('beats').textContent = '0'; $('qBar').style.width = '0%';
+      ppg.fill(0); beatMarks.length = 0;
+    }
+    else hideError();
+  }
+  function showError(msg) { const b = $('errorBox'); b.textContent = msg; b.hidden = false; }
+  function hideError() { $('errorBox').hidden = true; }
+  function log(t) {
+    const l = $('log'); const d = document.createElement('div'); d.textContent = t; l.prepend(d);
+    while (l.children.length > 6) l.lastChild.remove();
+  }
+
+  $('ledSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) send(b.dataset.l); });
+  $('resetBtn').addEventListener('click', () => { send('r'); trend.length = 0; drawTrend(); });
+  $('recBtn').addEventListener('click', () => {
+    recording = !recording;
+    if (recording) rows = ['time_ms,ir,red,ppg,beat,bpm,spo2,quality,led,contact,pi,motion,led_mA'];
+    $('recBtn').textContent = recording ? 'إيقاف التسجيل' : 'بدء التسجيل';
+    $('recBtn').classList.toggle('rec', recording);
+    $('saveBtn').disabled = recording || rows.length < 2;
+  });
+  $('saveBtn').addEventListener('click', () => {
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'repocare_' + lastLevel + '_' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.csv';
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  // ---------- Drawing ----------
+  function fit(canvas) {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w: r.width, h: r.height };
+  }
+
+  let lo = -50, hi = 50;
+  function drawTrace() {
+    const { ctx, w, h } = fit($('traceCanvas'));
+    ctx.clearRect(0, 0, w, h);
+    // ECG-paper grid: major line = 1 s, minor = 0.2 s
+    for (let i = 0; i <= 30; i++) {
+      const x = w - (i / 30) * w;
+      ctx.strokeStyle = i % 5 === 0 ? getVar('--grid-major') : getVar('--grid-minor');
+      ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    const step = w / 30;
+    for (let y = h, i = 0; y >= 0; y -= step, i++) {
+      ctx.strokeStyle = i % 5 === 0 ? getVar('--grid-major') : getVar('--grid-minor');
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    if (!connected) return;
+
+    let mn = Infinity, mx = -Infinity;
+    for (let i = 0; i < N; i++) { const v = ppg[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
+    if (mx - mn < 20) { mn -= 10; mx += 10; }
+    lo += (mn - lo) * 0.08; hi += (mx - hi) * 0.08;
+    const pad = (hi - lo) * 0.15, yOf = v => h - ((v - lo + pad) / (hi - lo + 2 * pad)) * h;
+
+    // beat ticks along the top edge
+    ctx.strokeStyle = getVar('--pulse'); ctx.globalAlpha = .35; ctx.lineWidth = 2;
+    for (const b of beatMarks) {
+      const age = sampleNo - b; if (age < 0 || age >= N) continue;
+      const x = w - (age / N) * w;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 14); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // waveform (oldest on the left, newest on the right)
+    ctx.strokeStyle = getVar('--pulse'); ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const v = ppg[(head + i) % N];
+      const x = (i / (N - 1)) * w, y = yOf(v);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  function drawTrend() {
+    const { ctx, w, h } = fit($('trendCanvas'));
+    ctx.clearRect(0, 0, w, h);
+    let mn = 50, mx = 110;
+    for (const p of trend) { mn = Math.min(mn, p.bpm - 5); mx = Math.max(mx, p.bpm + 5); }
+    const yOf = v => h - 18 - ((v - mn) / (mx - mn)) * (h - 30), now = Date.now();
+    ctx.font = '12px "IBM Plex Sans Arabic", system-ui'; ctx.fillStyle = getVar('--muted');
+    ctx.direction = 'ltr'; ctx.textAlign = 'left';
+    ctx.strokeStyle = getVar('--rule'); ctx.lineWidth = 1;
+    for (const v of [mn, (mn + mx) / 2, mx]) {
+      const y = yOf(v); ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(w, y); ctx.stroke();
+      ctx.fillText(Math.round(v), 0, y + 4);
+    }
+    if (trend.length < 2) return;
+    ctx.strokeStyle = getVar('--pulse'); ctx.lineWidth = 2; ctx.beginPath();
+    trend.forEach((p, i) => {
+      const x = 30 + (1 - (now - p.t) / 120000) * (w - 30), y = yOf(p.bpm);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  const css = getComputedStyle(document.documentElement);
+  function getVar(n) { return css.getPropertyValue(n).trim(); }
+
+  function frame() { drawTrace(); requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+  window.addEventListener('resize', drawTrend);
+  drawTrend();
+})();
+</script>
+</body>
+</html>
