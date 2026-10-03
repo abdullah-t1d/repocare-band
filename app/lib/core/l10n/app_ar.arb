@@ -1,0 +1,26 @@
+{
+  "@@locale": "ar",
+
+  "appTitle": "repoCare Band",
+  "appSubtitle": "قراءات حساس النبض MAX30102",
+
+  "navDevices": "الأجهزة",
+  "navLive": "القراءات المباشرة",
+  "navMeasure": "قياس موجّه",
+
+  "footerDisclaimer": "نموذج أولي لمشروع تخرج، غير تشخيصي",
+
+  "comingNextPhase": "هذه الصفحة قيد البناء",
+
+  "qualityExcellent": "ممتازة",
+  "qualityAcceptable": "مقبولة",
+  "qualityWeak": "ضعيفة",
+  "qualityNone": "--",
+
+  "hintSaturated": "الإضاءة قوية والإشارة مشبعة. اختر مستوى إضاءة أقل.",
+  "hintNoContact": "ضع إصبعك على الحساس بضغط خفيف وثابت.",
+  "hintMotion": "تحركت يدك. القراءة متوقفة لين تثبت.",
+  "hintSettling": "ثبّت يدك على الطاولة ولا تتحرك… جاري حساب النبض.",
+  "hintWeakSignal": "الإشارة ضعيفة. خفف الضغط وثبّت يدك على الطاولة.",
+  "hintStable": "القراءة مستقرة."
+}
