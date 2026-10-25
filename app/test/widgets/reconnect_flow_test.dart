@@ -92,4 +92,28 @@ void main() {
     expect(find.textContaining('Sensor not found'), findsNothing);
     await tearDownApp(tester, c);
   });
+
+  testWidgets('AS6221 messages neither raise nor clear the pulse-sensor hint', (tester) async {
+    final factory = FakeTransportFactory();
+    final c = await pumpApp(tester, transports: factory, prefs: _en);
+    await tester.tap(find.byKey(DevicesPage.connectKey));
+    await tester.pumpAndSettle();
+
+    // Combined firmware v2.2 with the skin-temperature sensor unplugged.
+    factory.last.push('#OK MAX30102 ready');
+    factory.last.push('#ERR AS6221 not found at 0x48');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sensor not found'), findsNothing);
+
+    factory.last.push('#ERR MAX30102 lost - retrying');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sensor not found'), findsOneWidget);
+    factory.last.push('#OK AS6221 ready');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sensor not found'), findsOneWidget, reason: 'only the MAX30102 OK clears it');
+    factory.last.push('#OK MAX30102 ready');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sensor not found'), findsNothing);
+    await tearDownApp(tester, c);
+  });
 }

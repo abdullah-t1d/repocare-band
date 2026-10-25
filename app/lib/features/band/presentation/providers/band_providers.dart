@@ -144,13 +144,17 @@ class ConnectionController extends Notifier<ConnectionUiState> {
 
   void _onLog(DeviceLog log) {
     final status = state.status;
+    // The wiring hint is about the pulse sensor. The combined firmware also
+    // reports the AS6221 (`#ERR AS6221 not found`, `#OK AS6221 ready`), which
+    // must neither raise nor clear it.
+    final aboutPulseSensor = log.text.contains('MAX30102');
     switch (log.kind) {
       case LogKind.mode:
         state = state.copyWith(status: status.copyWith(firmwareMode: log.firmwareMode));
       case LogKind.error:
-        state = state.copyWith(status: status.copyWith(sensorError: true));
+        if (aboutPulseSensor) state = state.copyWith(status: status.copyWith(sensorError: true));
       case LogKind.ok:
-        state = state.copyWith(status: status.copyWith(sensorError: false));
+        if (aboutPulseSensor) state = state.copyWith(status: status.copyWith(sensorError: false));
       case LogKind.boot ||
             LogKind.channel ||
             LogKind.led ||
