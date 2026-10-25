@@ -1,6 +1,6 @@
 # Serial protocol (USB, 115200 baud)
 
-Both heart-rate sketches send the same plain-text lines, so any tool can read them (the dashboard, a Python script, the Arduino Serial Monitor).
+Both heart-rate sketches and the combined firmware (`repocare_combined.ino`, v2.2) send the same plain-text lines, so any tool can read them (the dashboard, the app, a Python script, the Arduino Serial Monitor).
 
 ## Lines sent by the band
 
@@ -19,9 +19,9 @@ M,<bpm>,<spo2>,<rmssd>,<contact>,<quality>,<tempC>,<led>,<saturated>,<beats>,<pi
 
 | Field | Meaning | Not available |
 |---|---|---|
-| `bpm` | Heart rate | `-1` |
-| `spo2` | SpO2 estimate, % (finger only) | `-1` |
-| `rmssd` | HRV, ms | `-1` |
+| `bpm` | Heart rate. v2.2: when the signal drops, the last good value is kept for up to 10 s and arrives with the current low quality (`quality` < 40) | `-1` |
+| `spo2` | SpO2 estimate, % (finger only). v2.2: appears after 3 good seconds | `-1` |
+| `rmssd` | HRV (RMSSD), ms. v2.2: computed over a 60 s artefact-corrected window and refreshed every 10 s, so the first value appears after ~45–60 s of steady signal | `-1` |
 | `contact` | `1` = skin detected | — |
 | `quality` | 0–100 | — |
 | `tempC` | MAX30102 **chip** temperature (not body temperature) | `-99` |
@@ -42,6 +42,9 @@ M,<bpm>,<spo2>,<rmssd>,<contact>,<quality>,<tempC>,<led>,<saturated>,<beats>,<pi
 | `#ERR MAX30102 not found ...` | Wiring problem; retried every 2 s |
 | `#MODE finger` / `#MODE wrist` | Which sketch is running |
 | `#CH IR` / `#CH RED` / `#CH MIX` | Wrist only: signal currently used for the rhythm search |
+| `#CONTACT on` / `#CONTACT off` | v2.2: skin contact found / lost |
+| `#AGC LED x.x mA` | v2.2: automatic brightness changed the LED current |
+| `#ERR MAX30102 lost - retrying` | v2.2: the sensor stopped answering; the firmware keeps trying to reconnect |
 
 ## Commands accepted by the band
 

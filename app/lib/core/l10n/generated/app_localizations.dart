@@ -443,6 +443,12 @@ abstract class AppLocalizations {
   /// **'نبضة في الدقيقة'**
   String get unitBpmLong;
 
+  /// Under a held heart rate: the firmware repeats its last good value while the signal is weak.
+  ///
+  /// In ar, this message translates to:
+  /// **'آخر قراءة'**
+  String get lastReading;
+
   /// Milliseconds, kept as ms in both languages.
   ///
   /// In ar, this message translates to:
@@ -548,8 +554,20 @@ abstract class AppLocalizations {
   /// No description provided for @hrvNote.
   ///
   /// In ar, this message translates to:
-  /// **'RMSSD من النبضات النظيفة'**
+  /// **'RMSSD لآخر 60 ثانية، يتحدّث كل 10 ثوانٍ'**
   String get hrvNote;
+
+  /// No description provided for @hrvNeedsStillness.
+  ///
+  /// In ar, this message translates to:
+  /// **'يحتاج دقيقة ثبات'**
+  String get hrvNeedsStillness;
+
+  /// No description provided for @hrvSteadyProgress.
+  ///
+  /// In ar, this message translates to:
+  /// **'{seconds} من {target} ث'**
+  String hrvSteadyProgress(int seconds, int target);
 
   /// No description provided for @qualityTitle.
   ///
@@ -746,7 +764,7 @@ abstract class AppLocalizations {
   /// No description provided for @measureIntro.
   ///
   /// In ar, this message translates to:
-  /// **'اختر طريقة القياس. التطبيق يوقف القياس مبكرًا لما تكون القراءة مستقرة.'**
+  /// **'اختر طريقة القياس. قياس الإصبع يستمر حتى يُحسب HRV (75 ثانية كحد أقصى)، وقياس المعصم ينتهي مبكرًا لما تستقر القراءة.'**
   String get measureIntro;
 
   /// No description provided for @measureNeedsConnection.
@@ -874,6 +892,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'انتهى مبكرًا لأن القراءة مستقرة'**
   String get resultEndedEarly;
+
+  /// No description provided for @resultEndedWithHrv.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهى بعد حساب HRV'**
+  String get resultEndedWithHrv;
+
+  /// No description provided for @resultHrvUnavailable.
+  ///
+  /// In ar, this message translates to:
+  /// **'HRV غير متاح: يحتاج دقيقة ثبات كاملة'**
+  String get resultHrvUnavailable;
 
   /// Abbreviation, kept in Latin letters.
   ///

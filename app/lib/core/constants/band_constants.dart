@@ -1,7 +1,9 @@
 /// Numbers shared by the protocol, the UI and the tests.
 ///
 /// Values marked "firmware" mirror constants in
-/// `1_heart_rate/repocare_*/repocare_*.ino` and must stay in sync with them.
+/// `1_heart_rate/repocare_*/repocare_*.ino` and must stay in sync with them;
+/// "firmware v2.2" marks behaviour of the combined sketch
+/// (`repocare_combined.ino`).
 abstract final class BandConstants {
   /// USB serial speed used by both sketches.
   static const int baudRate = 115200;
@@ -29,6 +31,14 @@ abstract final class BandConstants {
 
   /// Quality at or above this is shown as "acceptable"; below is "weak".
   static const int qualityAcceptable = 45;
+
+  /// A BPM that arrives with a quality below this is the last good value the
+  /// firmware holds for up to 10 s after the signal drops (firmware v2.2).
+  static const int heldBpmQuality = 40;
+
+  /// Seconds of steady signal the firmware needs for its first RMSSD: a 60 s
+  /// window, refreshed every 10 s, first value after ~45–60 s (firmware v2.2).
+  static const int hrvSteadySeconds = 60;
 
   /// Length of the live waveform window.
   static const Duration waveformWindow = Duration(seconds: 6);

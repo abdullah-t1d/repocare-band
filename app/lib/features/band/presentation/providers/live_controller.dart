@@ -10,6 +10,7 @@ import '../../data/protocol/command_encoder.dart';
 import '../../data/recording/csv_recorder.dart';
 import '../../domain/band_event.dart';
 import '../../domain/enums.dart';
+import '../../domain/live_assessment.dart';
 import 'band_providers.dart';
 import 'waveform_buffer.dart';
 
@@ -30,6 +31,7 @@ class LiveState {
     this.metrics,
     this.beatCount = 0,
     this.lastIbiMs,
+    this.hrvSteadySeconds = 0,
     this.trend = const [],
     this.logs = const [],
     this.channel,
@@ -46,7 +48,11 @@ class LiveState {
 
   final int? lastIbiMs;
 
-  /// Heart rate over the last two minutes, oldest first.
+  /// Consecutive seconds with quality ≥ 45, see [nextHrvSteadySeconds].
+  final int hrvSteadySeconds;
+
+  /// Heart rate over the last two minutes, oldest first. Held values are
+  /// left out: they repeat an earlier reading.
   final List<TrendPoint> trend;
 
   /// Last device messages, newest first.
@@ -63,6 +69,7 @@ class LiveState {
     Metrics? metrics,
     int? beatCount,
     int? lastIbiMs,
+    int? hrvSteadySeconds,
     List<TrendPoint>? trend,
     List<String>? logs,
     PpgChannel? channel,
@@ -74,6 +81,7 @@ class LiveState {
         metrics: metrics ?? this.metrics,
         beatCount: beatCount ?? this.beatCount,
         lastIbiMs: lastIbiMs ?? this.lastIbiMs,
+        hrvSteadySeconds: hrvSteadySeconds ?? this.hrvSteadySeconds,
         trend: trend ?? this.trend,
         logs: logs ?? this.logs,
         channel: channel ?? this.channel,
@@ -150,7 +158,8 @@ class LiveController extends Notifier<LiveState> {
       case Metrics():
         state = state.copyWith(
           metrics: event,
-          trend: _updatedTrend(event.bpm),
+          hrvSteadySeconds: nextHrvSteadySeconds(state.hrvSteadySeconds, event),
+          trend: _updatedTrend(isHeldHeartRate(event) ? null : event.bpm),
           recordedRows: _recorder.rowCount,
         );
       case DeviceLog():

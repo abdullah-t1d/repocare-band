@@ -1,11 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 import '../enums.dart';
+import 'measure_protocol.dart';
 
 /// Why a guided measurement ended.
 enum SessionEndReason {
   /// The reading was stable long enough.
   stable,
+
+  /// The firmware reported HRV, which the measurement was waiting for.
+  hrvReceived,
 
   /// The maximum duration was reached.
   timeout,
@@ -41,7 +45,8 @@ class SessionResult {
   /// reading.
   final double? bpm;
 
-  /// Median HRV (RMSSD), when the firmware reported one.
+  /// HRV (RMSSD), when the firmware reported one. On the fingertip this is
+  /// the firmware's value as received, never an average of per-second values.
   final double? hrvMs;
 
   /// Median SpO2 estimate, fingertip only.
@@ -54,6 +59,11 @@ class SessionResult {
   bool get isSuccess => bpm != null;
 
   bool get isCancelled => endReason == SessionEndReason.cancelled;
+
+  /// The measurement waited for HRV but none arrived, so the result explains
+  /// that HRV needs a full minute of steady signal.
+  bool get hrvUnavailable =>
+      MeasureProtocol.forSite(site).endsOnHrv && hrvMs == null && !isCancelled;
 
   @override
   String toString() => 'SessionResult(${site.name}, ${endReason.name}, '

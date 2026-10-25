@@ -123,7 +123,15 @@ void main() {
       expect((parser.parse('#I2C ok, looking for sensor...')! as DeviceLog).kind, LogKind.info);
     });
 
-    test('firmware mode', () {
+    test('firmware v2.2 status lines are logged as they are', () {
+      expect(parser.parse('#CONTACT on'), const DeviceLog(text: 'CONTACT on', kind: LogKind.info));
+      expect(parser.parse('#CONTACT off'), const DeviceLog(text: 'CONTACT off', kind: LogKind.info));
+      expect(parser.parse('#AGC LED 12.4 mA'), const DeviceLog(text: 'AGC LED 12.4 mA', kind: LogKind.info));
+      expect(parser.parse('#ERR MAX30102 lost - retrying'),
+          const DeviceLog(text: 'ERR MAX30102 lost - retrying', kind: LogKind.error));
+    });
+
+        test('firmware mode', () {
       expect(
         parser.parse('#MODE finger'),
         const DeviceLog(text: 'MODE finger', kind: LogKind.mode, firmwareMode: FirmwareMode.finger),

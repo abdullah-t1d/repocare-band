@@ -181,6 +181,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unitBpmLong => 'beats per minute';
 
   @override
+  String get lastReading => 'Last reading';
+
+  @override
   String get unitMs => 'ms';
 
   @override
@@ -232,7 +235,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hrvTitle => 'Heart-rate variability (HRV)';
 
   @override
-  String get hrvNote => 'RMSSD from clean beats';
+  String get hrvNote => 'RMSSD over the last 60 s, updated every 10 s';
+
+  @override
+  String get hrvNeedsStillness => 'Needs 1 minute of stillness';
+
+  @override
+  String hrvSteadyProgress(int seconds, int target) {
+    return '$seconds of $target s';
+  }
 
   @override
   String get qualityTitle => 'Signal quality';
@@ -333,7 +344,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get measureTitle => 'Guided measurement';
 
   @override
-  String get measureIntro => 'Choose how to measure. The app finishes early as soon as the reading is stable.';
+  String get measureIntro => 'Choose how to measure. The finger measurement continues until HRV is calculated (75 s at most); the wrist measurement finishes early once the reading is stable.';
 
   @override
   String get measureNeedsConnection => 'Connect the band first to start a measurement.';
@@ -401,6 +412,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultEndedEarly => 'Finished early because the reading was stable';
+
+  @override
+  String get resultEndedWithHrv => 'Finished once HRV was calculated';
+
+  @override
+  String get resultHrvUnavailable => 'HRV not available: needs a full minute of stillness';
 
   @override
   String get resultHrv => 'HRV';

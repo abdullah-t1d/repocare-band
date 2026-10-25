@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repocare_band/features/band/presentation/widgets/beating_heart.dart';
 
-Widget _heart(int beats, {double? bpm = 60, bool reduceMotion = false}) => MediaQuery(
+Widget _heart(int beats, {double? bpm = 60, bool reduceMotion = false, bool active = true}) => MediaQuery(
       data: MediaQueryData(disableAnimations: reduceMotion),
       child: Directionality(
         textDirection: TextDirection.ltr,
-        child: Center(child: BeatingHeart(beatCount: beats, bpm: bpm, color: Colors.red)),
+        child: Center(child: BeatingHeart(beatCount: beats, bpm: bpm, color: Colors.red, active: active)),
       ),
     );
 
@@ -31,6 +31,22 @@ void main() {
     await tester.pumpWidget(_heart(5));
     await tester.pumpWidget(_heart(5, bpm: 90));
     await tester.pump(const Duration(milliseconds: 60));
+    expect(_scale(tester), 1.0);
+  });
+
+  testWidgets('inactive (held heart rate): beats do not pulse', (tester) async {
+    await tester.pumpWidget(_heart(0, active: false));
+    await tester.pumpWidget(_heart(1, active: false));
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(_scale(tester), 1.0);
+  });
+
+  testWidgets('becoming inactive stops a running pulse at once', (tester) async {
+    await tester.pumpWidget(_heart(0));
+    await tester.pumpWidget(_heart(1));
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(_scale(tester), greaterThan(1.05));
+    await tester.pumpWidget(_heart(1, active: false));
     expect(_scale(tester), 1.0);
   });
 

@@ -16,6 +16,24 @@ SignalQuality signalQualityForScore(int quality) {
   return SignalQuality.weak;
 }
 
+/// The BPM is the firmware's held value, not a live one: firmware v2.2 keeps
+/// the last good BPM for up to 10 s after the signal drops and sends it with
+/// the low quality of the current signal.
+bool isHeldHeartRate(Metrics metrics) {
+  final bpm = metrics.bpm;
+  return bpm != null && bpm > 0 && metrics.quality < BandConstants.heldBpmQuality;
+}
+
+/// Skin contact but no RMSSD yet: the firmware's 60 s window is not full.
+bool isWaitingForHrv(Metrics metrics) => metrics.contact && metrics.rmssdMs == null;
+
+/// The app's own count of consecutive seconds (one per `M` line) with quality
+/// ≥ 45, shown as progress towards the first RMSSD. A weaker reading restarts
+/// it at 0. It only estimates the firmware's state; HRV itself always comes
+/// from the firmware.
+int nextHrvSteadySeconds(int current, Metrics metrics) =>
+    metrics.quality >= BandConstants.qualityAcceptable ? current + 1 : 0;
+
 /// Hint for the live dashboard. The order matches the prototype dashboard:
 /// a clipped signal first, then contact, motion, settling and weak signal.
 LiveHint liveHintFor(Metrics metrics) {

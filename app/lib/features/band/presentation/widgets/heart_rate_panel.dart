@@ -16,12 +16,16 @@ import 'beating_heart.dart';
 /// The big heart-rate number with its zone, beating heart, glow and hint.
 ///
 /// Colour follows the resting zone and changes smoothly; a weak signal fades
-/// the number slightly.
+/// the number slightly. A held BPM (see [isHeldHeartRate]) is shown greyed out
+/// as the last reading, without zone and without the beating heart.
 class HeartRatePanel extends ConsumerWidget {
   const HeartRatePanel({super.key});
 
   /// Key of the heart-rate number, for tests.
   static const Key bpmKey = ValueKey('live-bpm');
+
+  /// Key of the "last reading" label shown under a held BPM, for tests.
+  static const Key heldKey = ValueKey('live-bpm-held');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,10 +33,11 @@ class HeartRatePanel extends ConsumerWidget {
     final live = ref.watch(liveControllerProvider);
     final metrics = live.metrics;
     final bpm = metrics?.bpm;
-    final zone = bpm == null ? null : HeartRateZone.forBpm(bpm);
+    final held = metrics != null && isHeldHeartRate(metrics);
+    final zone = bpm == null || held ? null : HeartRateZone.forBpm(bpm);
 
     return TweenAnimationBuilder<Color?>(
-      tween: ColorTween(end: heartRateColor(bpm, p)),
+      tween: ColorTween(end: held ? p.muted : heartRateColor(bpm, p)),
       duration: context.motion(AppTheme.bodyTransition),
       curve: Curves.easeInOut,
       builder: (context, color, _) {
@@ -54,6 +59,7 @@ class HeartRatePanel extends ConsumerWidget {
                 color: c,
                 bpm: bpm,
                 zone: zone,
+                held: held,
                 beatCount: live.beatCount,
                 quality: metrics == null ? SignalQuality.none : signalQualityOf(metrics),
                 hint: metrics == null ? null : liveHintFor(metrics),
@@ -72,6 +78,7 @@ class _PanelContent extends StatelessWidget {
     required this.color,
     required this.bpm,
     required this.zone,
+    required this.held,
     required this.beatCount,
     required this.quality,
     required this.hint,
@@ -80,6 +87,7 @@ class _PanelContent extends StatelessWidget {
   final Color color;
   final double? bpm;
   final HeartRateZone? zone;
+  final bool held;
   final int beatCount;
   final SignalQuality quality;
   final LiveHint? hint;
@@ -100,7 +108,7 @@ class _PanelContent extends StatelessWidget {
         children: [
           Row(
             children: [
-              BeatingHeart(beatCount: beatCount, bpm: bpm, color: color),
+              BeatingHeart(beatCount: beatCount, bpm: bpm, color: color, active: !held),
               const SizedBox(width: 8),
               Expanded(child: Text(l10n.heartRate, style: theme.textTheme.labelMedium)),
               AnimatedSwitcher(
@@ -142,11 +150,17 @@ class _PanelContent extends StatelessWidget {
           const SizedBox(height: 6),
           AnimatedSwitcher(
             duration: switchDuration,
-            child: Text(
-              zone?.caption(l10n) ?? '',
-              key: ValueKey(zone),
-              style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
-            ),
+            child: held
+                ? Text(
+                    l10n.lastReading,
+                    key: HeartRatePanel.heldKey,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
+                  )
+                : Text(
+                    zone?.caption(l10n) ?? '',
+                    key: ValueKey(zone),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
+                  ),
           ),
           const SizedBox(height: 18),
           if (hint != null) _Hint(hint: hint),

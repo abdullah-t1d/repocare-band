@@ -181,6 +181,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get unitBpmLong => 'نبضة في الدقيقة';
 
   @override
+  String get lastReading => 'آخر قراءة';
+
+  @override
   String get unitMs => 'ms';
 
   @override
@@ -232,7 +235,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get hrvTitle => 'تقلب النبض (HRV)';
 
   @override
-  String get hrvNote => 'RMSSD من النبضات النظيفة';
+  String get hrvNote => 'RMSSD لآخر 60 ثانية، يتحدّث كل 10 ثوانٍ';
+
+  @override
+  String get hrvNeedsStillness => 'يحتاج دقيقة ثبات';
+
+  @override
+  String hrvSteadyProgress(int seconds, int target) {
+    return '$seconds من $target ث';
+  }
 
   @override
   String get qualityTitle => 'جودة الإشارة';
@@ -333,7 +344,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get measureTitle => 'قياس موجّه';
 
   @override
-  String get measureIntro => 'اختر طريقة القياس. التطبيق يوقف القياس مبكرًا لما تكون القراءة مستقرة.';
+  String get measureIntro => 'اختر طريقة القياس. قياس الإصبع يستمر حتى يُحسب HRV (75 ثانية كحد أقصى)، وقياس المعصم ينتهي مبكرًا لما تستقر القراءة.';
 
   @override
   String get measureNeedsConnection => 'وصّل السوار أولًا لبدء القياس.';
@@ -401,6 +412,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get resultEndedEarly => 'انتهى مبكرًا لأن القراءة مستقرة';
+
+  @override
+  String get resultEndedWithHrv => 'انتهى بعد حساب HRV';
+
+  @override
+  String get resultHrvUnavailable => 'HRV غير متاح: يحتاج دقيقة ثبات كاملة';
 
   @override
   String get resultHrv => 'HRV';

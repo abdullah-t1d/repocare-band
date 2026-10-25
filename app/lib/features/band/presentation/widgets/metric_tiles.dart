@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/band_constants.dart';
 import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -18,11 +21,16 @@ import '../providers/live_controller.dart';
 class MetricTiles extends ConsumerWidget {
   const MetricTiles({super.key});
 
+  /// Keys of the HRV waiting state, for tests.
+  static const Key hrvWaitingKey = ValueKey('hrv-waiting');
+  static const Key hrvProgressKey = ValueKey('hrv-progress');
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final p = context.palette;
     final metrics = ref.watch(liveControllerProvider.select((s) => s.metrics));
+    final steadySeconds = ref.watch(liveControllerProvider.select((s) => s.hrvSteadySeconds));
     final site = ref.watch(connectionControllerProvider.select((s) => s.site));
     final quality = metrics == null ? SignalQuality.none : signalQualityOf(metrics);
     final onWrist = site == MeasureSite.wrist;
@@ -37,12 +45,17 @@ class MetricTiles extends ConsumerWidget {
         note: onWrist ? l10n.spo2WristNote : l10n.spo2Note,
         opacity: quality.opacity,
       ),
+      // The firmware's RMSSD as received (it changes every 10 s at most);
+      // while its 60 s window fills up, the app's own steady-seconds count.
       MetricTile(
         title: l10n.hrvTitle,
         value: metrics?.rmssdMs,
         unit: l10n.unitMs,
         note: l10n.hrvNote,
         opacity: quality.opacity,
+        pending: metrics != null && isWaitingForHrv(metrics)
+            ? _HrvWaiting(steadySeconds: steadySeconds)
+            : null,
       ),
       _QualityTile(quality: quality, score: metrics?.contact == true ? metrics!.quality : 0),
       MetricTile(
@@ -80,6 +93,7 @@ class MetricTile extends StatelessWidget {
     this.badge,
     this.note,
     this.opacity = 1,
+    this.pending,
     super.key,
   });
 
@@ -96,6 +110,9 @@ class MetricTile extends StatelessWidget {
 
   /// Fades the value when the signal is weak.
   final double opacity;
+
+  /// Shown instead of `--` while the value is still being prepared.
+  final Widget? pending;
 
   @override
   Widget build(BuildContext context) {
@@ -119,37 +136,80 @@ class MetricTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          AnimatedOpacity(
-            opacity: v == null ? 1 : opacity,
-            duration: context.motion(AppTheme.bodyTransition),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  v == null ? '--' : (decimals == 0 ? Fmt.whole(v) : Fmt.fixed(v, decimals)),
-                  textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w400,
-                    height: 1.15,
-                    color: v == null ? p.muted : (color ?? p.ink),
-                    fontFeatures: AppTheme.tabularFigures,
+          if (v == null && pending != null)
+            pending!
+          else
+            AnimatedOpacity(
+              opacity: v == null ? 1 : opacity,
+              duration: context.motion(AppTheme.bodyTransition),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    v == null ? '--' : (decimals == 0 ? Fmt.whole(v) : Fmt.fixed(v, decimals)),
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w400,
+                      height: 1.15,
+                      color: v == null ? p.muted : (color ?? p.ink),
+                      fontFeatures: AppTheme.tabularFigures,
+                    ),
                   ),
-                ),
-                if (unit != null) ...[
-                  const SizedBox(width: 6),
-                  Text(unit!, style: theme.textTheme.bodySmall?.copyWith(fontSize: 14)),
+                  if (unit != null) ...[
+                    const SizedBox(width: 6),
+                    Text(unit!, style: theme.textTheme.bodySmall?.copyWith(fontSize: 14)),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
           if (note != null) ...[
             const SizedBox(height: 6),
             Text(note!, style: theme.textTheme.bodySmall),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// "Needs 1 minute of stillness" with the steady seconds counted so far.
+class _HrvWaiting extends StatelessWidget {
+  const _HrvWaiting({required this.steadySeconds});
+
+  final int steadySeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final p = context.palette;
+    final theme = Theme.of(context);
+    final seconds = math.min(steadySeconds, BandConstants.hrvSteadySeconds);
+    return Column(
+      key: MetricTiles.hrvWaitingKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.hrvNeedsStillness,
+          style: TextStyle(fontSize: 17, height: 1.35, fontWeight: FontWeight.w600, color: p.muted),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: QualityBar(
+                key: MetricTiles.hrvProgressKey,
+                score: (seconds * 100 / BandConstants.hrvSteadySeconds).round(),
+                color: p.ink,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(l10n.hrvSteadyProgress(seconds, BandConstants.hrvSteadySeconds),
+                style: theme.textTheme.bodySmall),
+          ],
+        ),
+      ],
     );
   }
 }

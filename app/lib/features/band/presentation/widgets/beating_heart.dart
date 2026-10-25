@@ -6,6 +6,8 @@ import '../../../../core/utils/motion.dart';
 ///
 /// The pulse is triggered by a change of [beatCount] (one per `B` line from
 /// the band), never by a timer, so it shows exactly what the sensor detected.
+/// While [active] is false (the heart rate shown is a held value) it does not
+/// pulse at all.
 /// The pulse gets shorter as the heart rate rises. With "reduce motion" on,
 /// the icon stays still.
 class BeatingHeart extends StatefulWidget {
@@ -14,6 +16,7 @@ class BeatingHeart extends StatefulWidget {
     required this.color,
     this.bpm,
     this.size = 26,
+    this.active = true,
     super.key,
   });
 
@@ -27,6 +30,9 @@ class BeatingHeart extends StatefulWidget {
   final Color color;
   final double? bpm;
   final double size;
+
+  /// Pulses on new beats only while true.
+  final bool active;
 
   /// Length of one pulse: 45 % of the beat interval, kept between 180 and
   /// 520 ms so it stays readable at any heart rate.
@@ -60,6 +66,10 @@ class _BeatingHeartState extends State<BeatingHeart> with SingleTickerProviderSt
   @override
   void didUpdateWidget(BeatingHeart oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!widget.active) {
+      _controller.reset();
+      return;
+    }
     if (widget.beatCount != oldWidget.beatCount) _pulse();
   }
 
