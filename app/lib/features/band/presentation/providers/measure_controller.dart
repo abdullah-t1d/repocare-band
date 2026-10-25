@@ -4,6 +4,7 @@ import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/protocol/command_encoder.dart';
 import '../../domain/band_event.dart';
 import '../../domain/enums.dart';
 import '../../domain/live_assessment.dart';
@@ -12,8 +13,9 @@ import '../../domain/measurement/measurement_session.dart';
 import '../../domain/measurement/session_result.dart';
 import 'band_providers.dart';
 
-/// Screens of the guided measurement, in order.
-enum MeasureStep { choose, instructions, measuring, result }
+/// Screens of the guided measurement, in order. [tuning]: the profile command
+/// was sent and the app waits for the firmware's matching `#MODE` line.
+enum MeasureStep { choose, instructions, tuning, measuring, result }
 
 /// What the measure page shows. While measuring, the fields mirror the
 /// running [MeasurementSession]; [history] lives for the browser session only.
@@ -67,15 +69,26 @@ class MeasureState {
 
 /// Runs guided measurements on the connected band.
 ///
+/// On start it sends `f` or `w` (firmware v3.0 switches profile and replies
+/// `#MODE finger|wrist`) and starts the timer only once the matching `#MODE`
+/// line arrives, so no reading of the other profile is used. Older firmware
+/// ignores the command: after [modeSwitchTimeout] the measurement starts
+/// anyway and a known mismatching mode shows the firmware notice. Demo
+/// recordings ignore commands and start at once.
+///
 /// Time comes from `package:clock`, so widget tests can drive a whole
 /// measurement with fake time.
 class MeasureController extends Notifier<MeasureState> {
   /// How often the remaining time is refreshed between `M` lines.
   static const Duration tickInterval = Duration(milliseconds: 250);
 
+  /// How long to wait for the `#MODE` reply before starting anyway.
+  static const Duration modeSwitchTimeout = Duration(seconds: 3);
+
   MeasurementSession? _session;
   DateTime _startedAt = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _timer;
+  Timer? _tuneTimer;
   int _steadySeconds = 0;
 
   @override
@@ -113,11 +126,33 @@ class MeasureController extends Notifier<MeasureState> {
   }
 
   void start() {
+    final site = state.site;
+    if (site == null) return;
+    _stop(cancel: true);
+    final conn = ref.read(connectionControllerProvider);
+    if (conn.isDemo) {
+      _begin(null);
+      return;
+    }
+    state = MeasureState(step: MeasureStep.tuning, site: site, history: state.history);
+    unawaited(ref.read(bandRepositoryProvider).send(BandCommand.forSite(site)));
+    _tuneTimer = Timer(
+      modeSwitchTimeout,
+      () => _begin(ref.read(connectionControllerProvider).status.firmwareMode),
+    );
+  }
+
+  /// Starts the timed session. [knownMode] is the firmware profile known at
+  /// this point, for the mismatch notice.
+  void _begin(FirmwareMode? knownMode) {
+    _tuneTimer?.cancel();
+    _tuneTimer = null;
     final protocol = state.protocol;
     if (protocol == null) return;
-    _stop(cancel: true);
     _startedAt = clock.now();
-    _session = MeasurementSession(protocol: protocol, startedAt: _startedAt);
+    final session = MeasurementSession(protocol: protocol, startedAt: _startedAt);
+    if (knownMode != null) session.reportFirmware(knownMode);
+    _session = session;
     _steadySeconds = 0;
     _timer = Timer.periodic(tickInterval, (_) => _tick());
     _publish();
@@ -145,6 +180,12 @@ class MeasureController extends Notifier<MeasureState> {
   Duration get _elapsed => clock.now().difference(_startedAt);
 
   void _onEvent(BandEvent event) {
+    if (state.step == MeasureStep.tuning) {
+      // Readings of the old profile are ignored; the matching #MODE starts the timer.
+      final mode = event is DeviceLog ? event.firmwareMode : null;
+      if (mode != null && mode == state.site?.expectedFirmware) _begin(mode);
+      return;
+    }
     final session = _session;
     if (session == null) return;
     switch (event) {
@@ -168,7 +209,8 @@ class MeasureController extends Notifier<MeasureState> {
   }
 
   void _onConnection(BandConnectionState connection) {
-    if (connection != BandConnectionState.disconnected || _session == null) return;
+    final running = _session != null || state.step == MeasureStep.tuning;
+    if (connection != BandConnectionState.disconnected || !running) return;
     _stop(cancel: true);
     state = MeasureState(
       step: MeasureStep.instructions,
@@ -179,6 +221,8 @@ class MeasureController extends Notifier<MeasureState> {
   }
 
   void _stop({required bool cancel}) {
+    _tuneTimer?.cancel();
+    _tuneTimer = null;
     _timer?.cancel();
     _timer = null;
     if (cancel) _session?.cancel(_elapsed);

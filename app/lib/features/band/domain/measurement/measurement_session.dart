@@ -124,8 +124,13 @@ class MeasurementSession {
   }
 
   void onDeviceLog(DeviceLog log) {
-    if (log.firmwareMode != null) _reportedFirmware = log.firmwareMode;
+    final mode = log.firmwareMode;
+    if (mode != null) reportFirmware(mode);
   }
+
+  /// The firmware is known to run [mode], e.g. from a `#MODE` line received
+  /// before the session started.
+  void reportFirmware(FirmwareMode mode) => _reportedFirmware = mode;
 
   /// Stops the session without a result.
   void cancel(Duration elapsed) {

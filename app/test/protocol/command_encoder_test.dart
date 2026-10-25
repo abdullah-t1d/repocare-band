@@ -12,6 +12,8 @@ void main() {
     expect(encoder.encode(BandCommand.led3), '3');
     expect(encoder.encode(BandCommand.led4), '4');
     expect(encoder.encode(BandCommand.reset), 'r');
+    expect(encoder.encode(BandCommand.fingerProfile), 'f');
+    expect(encoder.encode(BandCommand.wristProfile), 'w');
     for (final c in BandCommand.values) {
       expect(encoder.encode(c), hasLength(1));
     }
@@ -22,5 +24,10 @@ void main() {
     for (final mode in LedMode.values.where((m) => !m.isAuto)) {
       expect(BandCommand.forLedMode(mode).wire, '${mode.level}');
     }
+  });
+
+  test('measure site maps to the profile command (firmware v3.0)', () {
+    expect(BandCommand.forSite(MeasureSite.finger).wire, 'f');
+    expect(BandCommand.forSite(MeasureSite.wrist).wire, 'w');
   });
 }

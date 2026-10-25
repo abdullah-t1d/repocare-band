@@ -297,6 +297,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ledBrightness => 'شدة الإضاءة';
 
   @override
+  String get profileTitle => 'وضع الحساس';
+
+  @override
+  String get profileFinger => 'الإصبع';
+
+  @override
+  String get profileWrist => 'المعصم';
+
+  @override
+  String get profileUnknown => 'لم يُبلغ السوار عن وضعه بعد';
+
+  @override
   String get ledAuto => 'تلقائي';
 
   @override
@@ -368,7 +380,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instructionsFinger => 'حط يدك على الطاولة، وريّح إصبعك على الحساس بدون ضغط، ولا تتحرك. النبض يظهر خلال ثوانٍ، و HRV يحتاج دقيقة ثبات كاملة (حتى 75 ثانية).';
 
   @override
-  String get instructionsWrist => 'تأكد إن السوار مشدود فوق عظمة المعصم بإصبع، وخلّ يدك ثابتة على سطح لمدة دقيقة.';
+  String get instructionsWrist => 'تأكد إن السوار مشدود فوق عظمة المعصم بإصبع، وخلّ يدك ثابتة على سطح لمدة دقيقة. أول قراءة على المعصم قد تحتاج حتى 25 ثانية.';
 
   @override
   String get startMeasurement => 'ابدأ القياس';
@@ -381,6 +393,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get measuringHoldStill => 'ثبّت يدك… جاري القياس';
+
+  @override
+  String get measureTuning => 'جاري ضبط الحساس…';
+
+  @override
+  String get wristFirstReading => 'على المعصم قد تحتاج أول قراءة حتى 25 ثانية';
 
   @override
   String secondsLeft(String seconds) {
@@ -402,10 +420,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get measureProgress => 'تقدم القياس';
 
   @override
-  String get firmwareMismatchFinger => 'السوار يشغّل برنامج المعصم. لقياس الإصبع ارفع برنامج repocare_finger.';
+  String get firmwareMismatchFinger => 'السوار ما زال في وضع المعصم. حدّث الفيرموير إلى الإصدار 3.0 ليتحول تلقائيًا، أو ارفع برنامج repocare_finger.';
 
   @override
-  String get firmwareMismatchWrist => 'السوار يشغّل برنامج الإصبع. لقياس المعصم ارفع برنامج repocare_wrist.';
+  String get firmwareMismatchWrist => 'السوار ما زال في وضع الإصبع. حدّث الفيرموير إلى الإصدار 3.0 ليتحول تلقائيًا، أو ارفع برنامج repocare_wrist.';
 
   @override
   String get resultTitle => 'النتيجة';

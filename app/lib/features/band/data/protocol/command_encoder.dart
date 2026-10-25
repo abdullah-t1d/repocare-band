@@ -18,7 +18,13 @@ enum BandCommand {
   led4('4'),
 
   /// Reset the analysis.
-  reset('r');
+  reset('r'),
+
+  /// Finger profile (combined firmware v3.0); replies `#MODE finger`.
+  fingerProfile('f'),
+
+  /// Wrist profile (combined firmware v3.0); replies `#MODE wrist`.
+  wristProfile('w');
 
   const BandCommand(this.wire);
 
@@ -32,6 +38,12 @@ enum BandCommand {
         LedMode.level2 => led2,
         LedMode.level3 => led3,
         LedMode.level4 => led4,
+      };
+
+  /// Command that switches the firmware to the profile for [site].
+  static BandCommand forSite(MeasureSite site) => switch (site) {
+        MeasureSite.finger => fingerProfile,
+        MeasureSite.wrist => wristProfile,
       };
 }
 

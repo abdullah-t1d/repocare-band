@@ -33,6 +33,7 @@ class MeasurePage extends ConsumerWidget {
   static const Key wristKey = ValueKey('measure-wrist');
   static const Key startKey = ValueKey('measure-start');
   static const Key cancelKey = ValueKey('measure-cancel');
+  static const Key tuningKey = ValueKey('measure-tuning');
   static const Key againKey = ValueKey('measure-again');
   static const Key ringKey = ValueKey('measure-ring');
   static const Key liveBpmKey = ValueKey('measure-live-bpm');
@@ -56,6 +57,7 @@ class MeasurePage extends ConsumerWidget {
     final body = switch (m.step) {
       MeasureStep.choose => const _ModeChoice(),
       MeasureStep.instructions => _Instructions(state: m),
+      MeasureStep.tuning => const _Tuning(),
       MeasureStep.measuring => _Measuring(state: m),
       MeasureStep.result => _ResultCard(result: m.result!),
     };
@@ -312,7 +314,9 @@ class _Measuring extends ConsumerWidget {
           Text(
             !contact
                 ? (site == MeasureSite.finger ? l10n.waitingFinger : l10n.waitingWrist)
-                : l10n.measuringHoldStill,
+                : site == MeasureSite.wrist && bpm == null
+                    ? l10n.wristFirstReading
+                    : l10n.measuringHoldStill,
             textAlign: TextAlign.center,
             style: theme.textTheme.titleSmall,
           ),
@@ -375,6 +379,44 @@ class _Measuring extends ConsumerWidget {
           OutlinedButton.icon(
             key: MeasurePage.cancelKey,
             onPressed: controller.cancel,
+            icon: const Icon(Icons.stop, size: 18),
+            label: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The profile command was sent; waiting for the firmware's `#MODE` reply.
+class _Tuning extends ConsumerWidget {
+  const _Tuning();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final p = context.palette;
+    return SurfaceCard(
+      key: MeasurePage.tuningKey,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      child: Column(
+        children: [
+          LayoutBuilder(
+            builder: (context, c) => _ProgressRing(
+              size: math.min(260, c.maxWidth - 20),
+              progress: 0,
+              color: p.muted,
+              child: context.reduceMotion
+                  ? Icon(Icons.tune, size: 40, color: p.muted)
+                  : SizedBox.square(dimension: 40, child: CircularProgressIndicator(color: p.muted)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(l10n.measureTuning, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            key: MeasurePage.cancelKey,
+            onPressed: ref.read(measureControllerProvider.notifier).cancel,
             icon: const Icon(Icons.stop, size: 18),
             label: Text(l10n.cancel),
           ),

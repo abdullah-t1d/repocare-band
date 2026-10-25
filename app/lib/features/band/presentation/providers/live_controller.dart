@@ -126,6 +126,14 @@ class LiveController extends Notifier<LiveState> {
   Future<void> setLed(LedMode mode) =>
       ref.read(bandRepositoryProvider).send(BandCommand.forLedMode(mode));
 
+  /// Switches the firmware profile (v3.0: `f` / `w`). The firmware restarts
+  /// its analysis and replies `#MODE`, which updates the shown mode; the trend
+  /// of the other profile is cleared.
+  Future<void> setProfile(MeasureSite site) async {
+    await ref.read(bandRepositoryProvider).send(BandCommand.forSite(site));
+    state = state.copyWith(trend: const []);
+  }
+
   /// Restarts the firmware analysis and clears the trend, like the prototype.
   Future<void> resetAnalysis() async {
     await ref.read(bandRepositoryProvider).send(BandCommand.reset);

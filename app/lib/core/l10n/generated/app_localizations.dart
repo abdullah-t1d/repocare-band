@@ -671,6 +671,30 @@ abstract class AppLocalizations {
   /// **'شدة الإضاءة'**
   String get ledBrightness;
 
+  /// No description provided for @profileTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'وضع الحساس'**
+  String get profileTitle;
+
+  /// No description provided for @profileFinger.
+  ///
+  /// In ar, this message translates to:
+  /// **'الإصبع'**
+  String get profileFinger;
+
+  /// No description provided for @profileWrist.
+  ///
+  /// In ar, this message translates to:
+  /// **'المعصم'**
+  String get profileWrist;
+
+  /// No description provided for @profileUnknown.
+  ///
+  /// In ar, this message translates to:
+  /// **'لم يُبلغ السوار عن وضعه بعد'**
+  String get profileUnknown;
+
   /// No description provided for @ledAuto.
   ///
   /// In ar, this message translates to:
@@ -812,7 +836,7 @@ abstract class AppLocalizations {
   /// No description provided for @instructionsWrist.
   ///
   /// In ar, this message translates to:
-  /// **'تأكد إن السوار مشدود فوق عظمة المعصم بإصبع، وخلّ يدك ثابتة على سطح لمدة دقيقة.'**
+  /// **'تأكد إن السوار مشدود فوق عظمة المعصم بإصبع، وخلّ يدك ثابتة على سطح لمدة دقيقة. أول قراءة على المعصم قد تحتاج حتى 25 ثانية.'**
   String get instructionsWrist;
 
   /// No description provided for @startMeasurement.
@@ -838,6 +862,18 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'ثبّت يدك… جاري القياس'**
   String get measuringHoldStill;
+
+  /// No description provided for @measureTuning.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري ضبط الحساس…'**
+  String get measureTuning;
+
+  /// No description provided for @wristFirstReading.
+  ///
+  /// In ar, this message translates to:
+  /// **'على المعصم قد تحتاج أول قراءة حتى 25 ثانية'**
+  String get wristFirstReading;
 
   /// No description provided for @secondsLeft.
   ///
@@ -872,13 +908,13 @@ abstract class AppLocalizations {
   /// No description provided for @firmwareMismatchFinger.
   ///
   /// In ar, this message translates to:
-  /// **'السوار يشغّل برنامج المعصم. لقياس الإصبع ارفع برنامج repocare_finger.'**
+  /// **'السوار ما زال في وضع المعصم. حدّث الفيرموير إلى الإصدار 3.0 ليتحول تلقائيًا، أو ارفع برنامج repocare_finger.'**
   String get firmwareMismatchFinger;
 
   /// No description provided for @firmwareMismatchWrist.
   ///
   /// In ar, this message translates to:
-  /// **'السوار يشغّل برنامج الإصبع. لقياس المعصم ارفع برنامج repocare_wrist.'**
+  /// **'السوار ما زال في وضع الإصبع. حدّث الفيرموير إلى الإصدار 3.0 ليتحول تلقائيًا، أو ارفع برنامج repocare_wrist.'**
   String get firmwareMismatchWrist;
 
   /// No description provided for @resultTitle.

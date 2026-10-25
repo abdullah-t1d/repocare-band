@@ -297,6 +297,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledBrightness => 'LED brightness';
 
   @override
+  String get profileTitle => 'Sensor profile';
+
+  @override
+  String get profileFinger => 'Finger';
+
+  @override
+  String get profileWrist => 'Wrist';
+
+  @override
+  String get profileUnknown => 'The band has not reported its profile yet';
+
+  @override
   String get ledAuto => 'Auto';
 
   @override
@@ -368,7 +380,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instructionsFinger => 'Rest your hand on the table and lay your fingertip on the sensor without pressing. Stay still: the heart rate appears within seconds, HRV needs a full minute of stillness (up to 75 seconds).';
 
   @override
-  String get instructionsWrist => 'Make sure the band sits snugly one finger-width above the wrist bone, and keep your hand still on a surface for one minute.';
+  String get instructionsWrist => 'Make sure the band sits snugly one finger-width above the wrist bone, and keep your hand still on a surface for one minute. On the wrist the first reading can take up to 25 seconds.';
 
   @override
   String get startMeasurement => 'Start measurement';
@@ -381,6 +393,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get measuringHoldStill => 'Hold still… measuring';
+
+  @override
+  String get measureTuning => 'Setting up the sensor…';
+
+  @override
+  String get wristFirstReading => 'On the wrist the first reading can take up to 25 seconds';
 
   @override
   String secondsLeft(String seconds) {
@@ -402,10 +420,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get measureProgress => 'Measurement progress';
 
   @override
-  String get firmwareMismatchFinger => 'The band is running the wrist sketch. For a finger measurement, upload repocare_finger.';
+  String get firmwareMismatchFinger => 'The band is still in wrist mode. Update the firmware to version 3.0 to switch automatically, or upload the repocare_finger sketch.';
 
   @override
-  String get firmwareMismatchWrist => 'The band is running the finger sketch. For a wrist measurement, upload repocare_wrist.';
+  String get firmwareMismatchWrist => 'The band is still in finger mode. Update the firmware to version 3.0 to switch automatically, or upload the repocare_wrist sketch.';
 
   @override
   String get resultTitle => 'Result';

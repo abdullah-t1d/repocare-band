@@ -5,13 +5,15 @@ import '../../../../core/l10n/l10n.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/widgets/surface_card.dart';
 import '../../domain/enums.dart';
+import '../l10n_labels.dart';
 import '../providers/band_providers.dart';
 import '../providers/live_controller.dart';
 
-/// LED brightness, reset, recording and CSV export.
+/// Sensor profile, LED brightness, reset, recording and CSV export.
 class ControlsPanel extends ConsumerWidget {
   const ControlsPanel({super.key});
 
+  static const Key profileKey = ValueKey('profile-switch');
   static const Key recordKey = ValueKey('record-button');
   static const Key exportKey = ValueKey('export-button');
 
@@ -31,6 +33,42 @@ class ControlsPanel extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CardTitle(l10n.controlsTitle),
+          Text(l10n.profileTitle, style: theme.textTheme.labelMedium),
+          const SizedBox(height: 8),
+          // Shows the profile from the last #MODE line, not the last tap: with
+          // older firmware that ignores f / w nothing changes.
+          SegmentedButton<MeasureSite>(
+            key: profileKey,
+            showSelectedIcon: false,
+            emptySelectionAllowed: true,
+            style: const ButtonStyle(visualDensity: VisualDensity.compact),
+            segments: [
+              ButtonSegment(
+                value: MeasureSite.finger,
+                icon: Icon(MeasureSite.finger.icon, size: 18),
+                label: Text(l10n.profileFinger),
+              ),
+              ButtonSegment(
+                value: MeasureSite.wrist,
+                icon: Icon(MeasureSite.wrist.icon, size: 18),
+                label: Text(l10n.profileWrist),
+              ),
+            ],
+            selected: {if (conn.site != null) conn.site!},
+            onSelectionChanged: canCommand
+                ? (s) {
+                    if (s.isNotEmpty) controller.setProfile(s.first);
+                  }
+                : null,
+          ),
+          if (conn.isConnected && conn.site == null) ...[
+            const SizedBox(height: 6),
+            Text(l10n.profileUnknown, style: theme.textTheme.bodySmall),
+          ] else if (conn.site == MeasureSite.wrist) ...[
+            const SizedBox(height: 6),
+            Text(l10n.wristFirstReading, style: theme.textTheme.bodySmall),
+          ],
+          const SizedBox(height: 16),
           Text(l10n.ledBrightness, style: theme.textTheme.labelMedium),
           const SizedBox(height: 8),
           Directionality(
