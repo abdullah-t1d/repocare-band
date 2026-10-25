@@ -1,10 +1,11 @@
 /*
-  repoCare Band (Aware) - Combined Prototype Firmware  v2.2
+  repoCare Band (Aware) - Combined Prototype Firmware  v3.0
   Board   : Seeed Studio XIAO nRF52840 Sense
   Sensors : ProtoCentral Pulse 3+ (MAX30102)  @ 0x57  - HR, SpO2, HRV/PRV, PPG
             ProtoCentral AS6221 skin temp     @ 0x48
   Wiring  : shared I2C via Qwiic hub. 3V3, GND, SDA = D4, SCL = D5
-  Site    : FINGERTIP (validation stage). Not a wrist algorithm.
+  Site    : FINGERTIP (default) or BACK OF THE WRIST. Send 'f' / 'w' to switch.
+            Each profile keeps its own validated settings and algorithm.
 
   Serial protocol @115200 (UNCHANGED):
     S,<ir>,<red>,<ppg>
@@ -13,7 +14,15 @@
       <beats>,<pi>,<motion>,<auto>,<led_mA>
     #<status>
   Sentinels: bpm/spo2/rmssd = -1, skin temp = -99, pi = -1
-  Commands : 'a' auto LED, '1'..'4' fixed LED, 'r' reset
+  Commands : 'a' auto LED, '1'..'4' fixed LED, 'r' reset,
+             'f' finger profile, 'w' wrist profile  (new, backward compatible)
+
+  v3.0: two profiles in one firmware.
+    FINGER = v2.2 unchanged (HR tiers, SpO2, HRV).
+    WRIST  = wrist algorithm validated on the back of the wrist: ADC 16384, bright
+             auto LED (IR 140k-210k), 15 s rhythm search on IR/RED/MIX, a rate must
+             repeat 3 s before it is shown, no SpO2, HRV only when beats and rhythm agree.
+    '#MODE finger|wrist' is printed at boot and on every switch; '#CH IR|RED|MIX' (wrist).
 
   What changed in v2.1 (summary, details in the notes at the end of the file):
     - Heart rate now has three confidence tiers (A: two methods agree,
@@ -61,14 +70,27 @@ const uint32_t SATURATED     = 250000;  // ADC full scale is 262143
 //                        saturation >250k.
 // Thresholds are scaled with the current LED amplitude (see contactScale()),
 // because a brighter LED also raises the no-contact reflection.
-const uint32_t CONTACT_ON  = 50000;    // above -> finger present
-const uint32_t CONTACT_OFF = 30000;    // below -> finger removed (hysteresis)
+// (finger values; wrist values are in the WRIST profile below)
 const uint8_t  CONTACT_DEBOUNCE = 30;  // samples (~300 ms) before contact changes
 
 // ---- Auto brightness --------------------------------------------------------
-const uint8_t  LED_START = 0x1F;       // ~6.2 mA, best fingertip level in our tests
-const uint32_t AGC_LOW   = 60000;      // was 80000: fewer needless LED changes
-const uint32_t AGC_HIGH  = 200000;     // was 180000: still well below saturation
+// ---- Two measurement profiles. Switch with 'f' (finger) or 'w' (wrist). ----
+struct Profile {
+  const char *name;
+  uint16_t adcRange;      // MAX30102 ADC full-scale setting
+  uint8_t  ledStart;      // starting LED amplitude (0.2 mA per step)
+  uint32_t contactOn;     // IR above -> skin present   (at ledStart, scaled with LED)
+  uint32_t contactOff;    // IR below -> skin removed   (hysteresis)
+  uint32_t agcLow;        // auto brightness keeps the IR level inside [agcLow, agcHigh]
+  uint32_t agcHigh;
+};
+// Finger: values validated on the fingertip (v2.1/v2.2).
+const Profile FINGER = {"finger", 4096,  0x1F, 50000, 30000,  60000, 200000};
+// Wrist (BACK of the wrist): values validated in the wrist tests.
+// The wrist pulse is 10-50x weaker, so the LED runs much brighter with a 4x wider ADC range.
+const Profile WRIST  = {"wrist",  16384, 0x7F, 12000,  8000, 140000, 210000};
+const Profile *P = &FINGER;
+bool wristMode = false;
 const uint16_t AGC_MIN_INTERVAL_MS = 3000;  // was 1000: one change per 3 s at most
 
 // ---- Timing -----------------------------------------------------------------
@@ -98,7 +120,7 @@ const float SPO2_MIN_PI       = 0.20f; // % ; very weak pulses give meaningless 
 
 const byte LED_FIXED[4] = {0x1F, 0x3F, 0x7F, 0xFF};   // ~6, 12, 25, 50 mA
 bool autoLed = true;
-uint8_t ledPA = LED_START;
+uint8_t ledPA = 0x1F;
 uint8_t fixedIndex = 0;
 
 // =====================================================
@@ -157,8 +179,14 @@ uint16_t stableSec = 0; uint8_t spo2Run = 0;
 const uint16_t AC_N = 800;
 float acBuf[AC_N]; uint16_t acHead = 0, acFill = 0;
 float acBpm = -1, acStrength = 0;
-const uint16_t DEC_N = AC_N / 2;       // analysed at 50 Hz (pairs averaged)
-float lin[DEC_N];
+// Wrist: 15 s rhythm search on three signals (IR, RED, IR+RED), the clearest one wins
+const uint16_t WAC_N = 1500;
+float wIR[WAC_N], wRed[WAC_N], wMix[WAC_N];
+uint16_t wHead = 0, wFill = 0;
+float histR[4] = {0, 0, 0, 0}, histM[4] = {0, 0, 0, 0};
+uint8_t channel = 0, lastChannel = 255;     // 0 IR, 1 RED, 2 MIX
+float prevAc = -1; uint8_t wStableRun = 0;  // wrist: same rate 3 s in a row before showing
+float lin[WAC_N / 2];                       // analysis scratch (50 Hz)
 
 // SpO2
 float irMax, irMin, redMax, redMin;
@@ -190,6 +218,7 @@ void resetBeats() {
   lastGoodBpm = -1;
   hrvCount = hrvHead = 0; hrvValue = -1; hrvAt = 0; lastHrvCalc = 0;
   stableSec = 0; spo2Run = 0;
+  wFill = wHead = 0; prevAc = -1; wStableRun = 0; lastChannel = 255;
   resetAC();
 }
 
@@ -198,7 +227,7 @@ void restartFilters(uint32_t ir, uint32_t red, uint32_t t, uint16_t settle) {
   hpIR.reset(ir); lpIR.reset(0); hpRed.reset(red); lpRed.reset(0);
   envHi = envLo = 0;
   winHead = winFill = 0;
-  for (uint8_t i = 0; i < 4; i++) hist4[i] = 0;
+  for (uint8_t i = 0; i < 4; i++) hist4[i] = histR[i] = histM[i] = 0;
   settleUntil = t + settle;
 }
 
@@ -224,7 +253,7 @@ void beatStats(uint8_t n, float &med, float &spread) {
 float medianIbiAll() { float m, s; beatStats(ibiCount, m, s); return m; }
 
 // Contact thresholds follow the LED: twice the light -> twice the no-contact reflection
-float contactScale() { return (float)ledPA / (float)LED_START; }
+float contactScale() { return (float)ledPA / (float)P->ledStart; }
 
 void setLed(uint8_t pa) {
   ledPA = pa;
@@ -291,20 +320,20 @@ void onBeat(uint32_t beatT) {
 }
 
 // =====================================================
-// Rhythm search (autocorrelation). Same result as before, ~10x faster:
-// the ring buffer is copied once into a straight 50 Hz array.
+// Rhythm search (autocorrelation), shared by both profiles.
+// The ring buffer is copied once into a straight 50 Hz array (pairs averaged).
 // =====================================================
-void updateAutocorr() {
-  acBpm = -1; acStrength = 0;
-  if (acFill < AC_N) return;
+void autocorrOn(const float *buf, uint16_t N, uint16_t head, float minBest, float &bpmOut, float &strOut) {
+  bpmOut = -1; strOut = 0;
+  const uint16_t D = N / 2;
   float mean = 0;
-  for (uint16_t i = 0; i < DEC_N; i++) {
-    lin[i] = 0.5f * (acBuf[(acHead + 2 * i) % AC_N] + acBuf[(acHead + 2 * i + 1) % AC_N]);
+  for (uint16_t i = 0; i < D; i++) {
+    lin[i] = 0.5f * (buf[(head + 2 * i) % N] + buf[(head + 2 * i + 1) % N]);
     mean += lin[i];
   }
-  mean /= DEC_N;
+  mean /= D;
   float r0 = 0;
-  for (uint16_t i = 0; i < DEC_N; i++) { lin[i] -= mean; r0 += lin[i] * lin[i]; }
+  for (uint16_t i = 0; i < D; i++) { lin[i] -= mean; r0 += lin[i] * lin[i]; }
   if (r0 <= 0) return;
 
   const uint16_t KMIN = 15, KMAX = 75;   // 200 .. 40 BPM at 50 Hz
@@ -312,12 +341,12 @@ void updateAutocorr() {
   float best = 0;
   for (uint16_t k = KMIN - 1; k <= KMAX + 1; k++) {
     float acc = 0;
-    const uint16_t n = DEC_N - k;
+    const uint16_t n = D - k;
     for (uint16_t i = 0; i < n; i++) acc += lin[i] * lin[i + k];
-    r[k] = acc / r0 * DEC_N / n;
+    r[k] = acc / r0 * D / n;
     if (k >= KMIN && k <= KMAX && r[k] > best) best = r[k];
   }
-  if (best < 0.2f) return;
+  if (best < minBest) return;               // finger 0.20, wrist 0.15 (validated values)
   uint16_t K = 0;
   for (uint16_t k = KMIN; k <= KMAX; k++)
     if (r[k] == best && r[k] >= r[k - 1] && r[k] >= r[k + 1]) { K = k; break; }
@@ -327,8 +356,29 @@ void updateAutocorr() {
     if (r[k] >= r[k - 1] && r[k] >= r[k + 1] && r[k] >= 0.85f * best) { K = k; break; }
   float den = r[K - 1] - 2 * r[K] + r[K + 1];
   float off = (den != 0) ? 0.5f * (r[K - 1] - r[K + 1]) / den : 0;
-  acBpm = 3000.0f / (K + off);
-  acStrength = r[K];
+  bpmOut = 3000.0f / (K + off);
+  strOut = r[K];
+}
+
+void updateAutocorr() {
+  acBpm = -1; acStrength = 0;
+  if (!wristMode) {                                   // finger: 8 s window, IR only
+    if (acFill < AC_N) return;
+    autocorrOn(acBuf, AC_N, acHead, 0.20f, acBpm, acStrength);
+    return;
+  }
+  if (wFill < WAC_N) return;                          // wrist: 15 s window, 3 signals
+  float b[3], st[3];
+  autocorrOn(wIR,  WAC_N, wHead, 0.15f, b[0], st[0]);
+  autocorrOn(wRed, WAC_N, wHead, 0.15f, b[1], st[1]);
+  autocorrOn(wMix, WAC_N, wHead, 0.15f, b[2], st[2]);
+  uint8_t best = 0;
+  for (uint8_t c = 1; c < 3; c++) if (st[c] > st[best] + 0.05f) best = c;   // margin = no flicker
+  channel = best; acBpm = b[best]; acStrength = st[best];
+  if (channel != lastChannel) {
+    lastChannel = channel;
+    Serial.println(channel == 0 ? "#CH IR" : channel == 1 ? "#CH RED" : "#CH MIX");
+  }
 }
 
 // =====================================================
@@ -342,8 +392,8 @@ void runAgc(uint32_t t) {
   agcSum = 0; agcN = 0; lastAgcMs = t;
 
   uint8_t pa = ledPA;
-  if (satRecent || mean > AGC_HIGH) pa = max(8, (int)(ledPA * 0.75f));
-  else if (mean < AGC_LOW)          pa = min(255, (int)(ledPA * 1.3f) + 1);
+  if (satRecent || mean > P->agcHigh) pa = max(8, (int)(ledPA * 0.75f));
+  else if (mean < P->agcLow)          pa = min(255, (int)(ledPA * 1.3f) + 1);
   satRecent = false;
 
   if (pa != ledPA) {
@@ -365,16 +415,16 @@ void processSample(uint32_t ir, uint32_t red) {
   // ---- Contact with LED-scaled hysteresis and debounce ----
   float sc = contactScale();
   if (!contact) {
-    if (ir > CONTACT_ON * sc) { if (++contactCount >= CONTACT_DEBOUNCE) {
+    if (ir > P->contactOn * sc) { if (++contactCount >= CONTACT_DEBOUNCE) {
         contact = true; contactCount = 0;
         resetBeats(); restartFilters(ir, red, t, SETTLE_MS); lastAgcMs = t; agcSum = 0; agcN = 0;
         Serial.println("#CONTACT on");
     } } else contactCount = 0;
   } else {
-    if (ir < CONTACT_OFF * sc) { if (++contactCount >= CONTACT_DEBOUNCE) {
+    if (ir < P->contactOff * sc) { if (++contactCount >= CONTACT_DEBOUNCE) {
         contact = false; contactCount = 0;
         resetBeats();
-        if (autoLed && ledPA != LED_START) setLed(LED_START);   // otherwise reflection may fake contact
+        if (autoLed && ledPA != P->ledStart) setLed(P->ledStart);   // otherwise reflection may fake contact
         Serial.println("#CONTACT off");
     } } else contactCount = 0;
   }
@@ -403,9 +453,19 @@ void processSample(uint32_t ir, uint32_t red) {
   if (ppgRed < redMin) redMin = ppgRed;
 
   float slope = ppg - hist4[h4];              // rise over 40 ms
-  hist4[h4] = ppg; h4 = (h4 + 1) % 4;
-  acBuf[acHead] = slope; acHead = (acHead + 1) % AC_N;
-  if (acFill < AC_N) acFill++;
+  hist4[h4] = ppg;
+  if (!wristMode) {
+    acBuf[acHead] = slope; acHead = (acHead + 1) % AC_N;
+    if (acFill < AC_N) acFill++;
+  } else {                                    // normalised so IR and RED can be mixed
+    float nIR = ppg / dcIR * 100000.0f, nRed = ppgRed / dcRed * 100000.0f, mix = nIR + nRed;
+    wIR[wHead] = slope;
+    wRed[wHead] = nRed - histR[h4]; histR[h4] = nRed;
+    wMix[wHead] = mix - histM[h4];  histM[h4] = mix;
+    wHead = (wHead + 1) % WAC_N;
+    if (wFill < WAC_N) wFill++;
+  }
+  h4 = (h4 + 1) % 4;
 
   slopeEnv *= 0.999f;
   win[winHead] = slope; winHead = (winHead + 1) % WIN;
@@ -476,31 +536,43 @@ void sendMetrics() {
   char tier = '-';
 
   if (contact) {
-    bool beatsOk = beatBpm > 0 && spread < TIER_B_MAX_SPREAD;
-    bool agree   = beatBpm > 0 && acBpm > 0 && acStrength >= 0.3f &&
-                   fabs(beatBpm - acBpm) < AGREE_TOL * acBpm && spread < 0.15f;
-
-    if (agree) {                                   // ---- Tier A: both methods agree
-      float qPeriod = constrain((acStrength - 0.2f) / 0.5f, 0.0f, 1.0f) * 100;
-      float qBeats  = constrain(1.0f - spread / TIER_B_MAX_SPREAD, 0.0f, 1.0f) * 100;
-      quality = constrain((int)(0.5f * (qPeriod + qBeats) + 25), 75, 100);
-      bpm = beatBpm; tier = 'A';
-    } else if (beatsOk) {                          // ---- Tier B: consistent beats
-      quality = 45 + (int)(29 * (1.0f - spread / TIER_B_MAX_SPREAD));       // 45..74
-      if (acBpm > 0 && acStrength >= TIER_C_MIN_AC &&
-          fabs(beatBpm - acBpm) > 0.2f * acBpm) quality = max(40, quality - 10);  // strong rhythm disagrees
-      bpm = beatBpm; tier = 'B';
-    } else if (acBpm > 0 && acStrength >= TIER_C_MIN_AC &&
-               ((lastGoodBpm > 0 && fabs(acBpm - lastGoodBpm) < 0.15f * lastGoodBpm) ||
-                acStrength >= TIER_C_ALONE_AC)) {      // ---- Tier C: rhythm only
-      // Noise can also look periodic, so a rhythm alone is trusted only if it continues
-      // the last good HR, or if it is very strong.
-      quality = 40 + (int)(25 * constrain((acStrength - TIER_C_MIN_AC) / 0.35f, 0.0f, 1.0f));  // 40..65
-      bpm = acBpm; tier = 'C';
+    if (wristMode) {
+      // ---- Wrist: the 15 s rhythm search leads, beat detection only confirms ----
+      bool agreeW = beatBpm > 0 && acBpm > 0 && fabs(beatBpm - acBpm) < AGREE_TOL * acBpm;
+      if (acBpm > 0) quality = (int)(constrain((acStrength - 0.25f) / 0.45f, 0.0f, 1.0f) * 100);
+      if (agreeW) quality = min(100, quality + 15);
+      if (acBpm > 0 && quality >= 40 && prevAc > 0 && fabs(acBpm - prevAc) < 0.08f * prevAc) wStableRun++;
+      else wStableRun = 0;
+      prevAc = (quality >= 40) ? acBpm : -1;
+      if (wStableRun >= 2) { bpm = acBpm; tier = agreeW ? 'A' : 'C'; }   // same rate 3 s in a row
+      if (quality == 0) quality = 10;
     } else {
-      quality = 10;                                // contact, but nothing trustworthy yet
-    }
+      bool beatsOk = beatBpm > 0 && spread < TIER_B_MAX_SPREAD;
+      bool agree   = beatBpm > 0 && acBpm > 0 && acStrength >= 0.3f &&
+                     fabs(beatBpm - acBpm) < AGREE_TOL * acBpm && spread < 0.15f;
 
+      if (agree) {                                   // ---- Tier A: both methods agree
+        float qPeriod = constrain((acStrength - 0.2f) / 0.5f, 0.0f, 1.0f) * 100;
+        float qBeats  = constrain(1.0f - spread / TIER_B_MAX_SPREAD, 0.0f, 1.0f) * 100;
+        quality = constrain((int)(0.5f * (qPeriod + qBeats) + 25), 75, 100);
+        bpm = beatBpm; tier = 'A';
+      } else if (beatsOk) {                          // ---- Tier B: consistent beats
+        quality = 45 + (int)(29 * (1.0f - spread / TIER_B_MAX_SPREAD));       // 45..74
+        if (acBpm > 0 && acStrength >= TIER_C_MIN_AC &&
+            fabs(beatBpm - acBpm) > 0.2f * acBpm) quality = max(40, quality - 10);  // strong rhythm disagrees
+        bpm = beatBpm; tier = 'B';
+      } else if (acBpm > 0 && acStrength >= TIER_C_MIN_AC &&
+                 ((lastGoodBpm > 0 && fabs(acBpm - lastGoodBpm) < 0.15f * lastGoodBpm) ||
+                  acStrength >= TIER_C_ALONE_AC)) {      // ---- Tier C: rhythm only
+        // Noise can also look periodic, so a rhythm alone is trusted only if it continues
+        // the last good HR, or if it is very strong.
+        quality = 40 + (int)(25 * constrain((acStrength - TIER_C_MIN_AC) / 0.35f, 0.0f, 1.0f));  // 40..65
+        bpm = acBpm; tier = 'C';
+      } else {
+        quality = 10;                                // contact, but nothing trustworthy yet
+      }
+
+    }
     if (moving) quality = min(quality, 20);
     if (lastIr > SATURATED) { quality = min(quality, 20); bpm = -1; }
 
@@ -515,13 +587,14 @@ void sendMetrics() {
     // ---- HRV / PRV (RMSSD): 60 s window, recomputed every 10 s ----
     if (t - lastHrvCalc >= HRV_UPDATE_MS) {
       lastHrvCalc = t;
-      float v = (stableSec >= HRV_STABLE_SEC && !moving) ? computeHRV(t) : -1;
+      bool okW = !wristMode || (tier == 'A' && quality >= HRV_MIN_QUALITY);   // wrist: stricter
+      float v = (stableSec >= HRV_STABLE_SEC && !moving && okW) ? computeHRV(t) : -1;
       if (v > 0) { hrvValue = v; hrvAt = t; }
     }
     if (hrvValue > 0 && t - hrvAt < HRV_SHOW_MS) rmssd = hrvValue;
 
     // ---- SpO2: tier A only, after a few good seconds in a row ----
-    if (spo2Run >= SPO2_STABLE_SEC && spo2Count >= SPO2_MIN_SAMPLES)
+    if (!wristMode && spo2Run >= SPO2_STABLE_SEC && spo2Count >= SPO2_MIN_SAMPLES)   // never on the wrist
       spo2 = medianSpO2();
   } else {
     lastGoodBpm = -1; stableSec = 0; spo2Run = 0;
@@ -556,8 +629,8 @@ bool initMAX30102() {
     Serial.println("#ERR MAX30102 not found at 0x57");
     return false;
   }
-  ledPA = autoLed ? LED_START : LED_FIXED[fixedIndex];
-  sensor.setup(ledPA, SAMPLE_AVG, 2, SAMPLE_RATE, 411, 4096);
+  ledPA = autoLed ? P->ledStart : LED_FIXED[fixedIndex];
+  sensor.setup(ledPA, SAMPLE_AVG, 2, SAMPLE_RATE, 411, P->adcRange);
   sensor.enableDIETEMPRDY();
   contact = false; contactCount = 0;
   resetBeats();
@@ -601,6 +674,20 @@ void updateSkinTemperature() {
   else skinTempC = NAN;
 }
 
+// Switch measurement profile: reconfigures the sensor and restarts the analysis
+void setMode(bool wrist) {
+  wristMode = wrist;
+  P = wrist ? &WRIST : &FINGER;
+  autoLed = true;
+  ledPA = P->ledStart;
+  if (maxReady) {
+    sensor.setup(ledPA, SAMPLE_AVG, 2, SAMPLE_RATE, 411, P->adcRange);
+    sensor.enableDIETEMPRDY();
+  }
+  contact = false; contactCount = 0; resetBeats();
+  Serial.print("#MODE "); Serial.println(P->name);
+}
+
 // =====================================================
 // Commands
 // =====================================================
@@ -614,9 +701,13 @@ void handleCommands() {
       Serial.print("#LED fixed level "); Serial.println(c);
     } else if (c == 'a') {
       autoLed = true;
-      if (maxReady) setLed(LED_START);
+      if (maxReady) setLed(P->ledStart);
       contact = false; contactCount = 0; resetBeats();
       Serial.println("#LED auto");
+    } else if (c == 'f') {
+      setMode(false);
+    } else if (c == 'w') {
+      setMode(true);
     } else if (c == 'r') {
       contact = false; contactCount = 0; resetBeats();
       Serial.println("#Reset");
@@ -658,7 +749,7 @@ void setup() {
   maxReady = initMAX30102();      lastMaxInitTry = millis();
   skinTempReady = initAS6221();   lastTempInitTry = millis();
 
-  Serial.println("#MODE finger");
+  Serial.print("#MODE "); Serial.println(P->name);
   Serial.println("#READY");
 }
 
@@ -692,7 +783,9 @@ void loop() {
     Tier B (consistent beats only) -> 45..74 (40.. if a strong rhythm disagrees)
     Tier C (strong rhythm only)    -> 40..65
     no trustworthy estimate        -> 10 ; saturated -> <=20
-  First values: Tier B after ~4 accepted beats (~5-6 s after contact),
+  WRIST profile: first HR after ~17-25 s (15 s window + 3 s repeat rule),
+                then updates every second; no SpO2; HRV rarely (needs agreement).
+  FINGER first values: Tier B after ~4 accepted beats (~5-6 s after contact),
                 Tier A after the 8 s rhythm buffer fills (~9-10 s),
                 SpO2 ~3 s after tier A, HRV after ~50-60 s of steady signal.
   To make HR stricter: lower TIER_B_MAX_SPREAD or raise TIER_C_MIN_AC.
