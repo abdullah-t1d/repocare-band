@@ -353,7 +353,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get siteFinger => 'قياس الإصبع';
 
   @override
-  String get siteFingerDetail => '30 ثانية · النبض و HRV والأكسجين التقديري';
+  String get siteFingerDetail => 'حتى 75 ثانية · النبض والأكسجين التقديري و HRV';
 
   @override
   String get siteWrist => 'قياس المعصم';
@@ -365,7 +365,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get instructionsTitle => 'قبل ما نبدأ';
 
   @override
-  String get instructionsFinger => 'حط يدك على الطاولة، وريّح إصبعك على الحساس بدون ضغط، ولا تتحرك 30 ثانية.';
+  String get instructionsFinger => 'حط يدك على الطاولة، وريّح إصبعك على الحساس بدون ضغط، ولا تتحرك. النبض يظهر خلال ثوانٍ، و HRV يحتاج دقيقة ثبات كاملة (حتى 75 ثانية).';
 
   @override
   String get instructionsWrist => 'تأكد إن السوار مشدود فوق عظمة المعصم بإصبع، وخلّ يدك ثابتة على سطح لمدة دقيقة.';
@@ -399,6 +399,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get liveQuality => 'جودة الإشارة الآن';
 
   @override
+  String get measureProgress => 'تقدم القياس';
+
+  @override
   String get firmwareMismatchFinger => 'السوار يشغّل برنامج المعصم. لقياس الإصبع ارفع برنامج repocare_finger.';
 
   @override
@@ -415,6 +418,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get resultEndedWithHrv => 'انتهى بعد حساب HRV';
+
+  @override
+  String get resultEndedTimeout => 'انتهى وقت القياس';
 
   @override
   String get resultHrvUnavailable => 'HRV غير متاح: يحتاج دقيقة ثبات كاملة';

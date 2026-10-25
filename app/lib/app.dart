@@ -11,7 +11,7 @@ import 'core/widgets/app_shell.dart';
 import 'core/widgets/header_actions.dart';
 import 'features/band/presentation/pages/devices_page.dart';
 import 'features/band/presentation/pages/live_page.dart';
-import 'features/band/presentation/pages/placeholder_page.dart';
+import 'features/band/presentation/pages/measure_page.dart';
 import 'features/band/presentation/providers/live_controller.dart';
 import 'features/band/presentation/widgets/connection_widgets.dart';
 
@@ -69,9 +69,7 @@ GoRouter buildRouter({String initialLocation = AppRoutes.devices}) => GoRouter(
             ),
             GoRoute(
               path: AppRoutes.measure,
-              pageBuilder: (context, state) => NoTransitionPage(
-                child: PlaceholderPage(title: context.l10n.navMeasure),
-              ),
+              pageBuilder: (context, state) => const NoTransitionPage(child: MeasurePage()),
             ),
           ],
         ),

@@ -782,7 +782,7 @@ abstract class AppLocalizations {
   /// No description provided for @siteFingerDetail.
   ///
   /// In ar, this message translates to:
-  /// **'30 ثانية · النبض و HRV والأكسجين التقديري'**
+  /// **'حتى 75 ثانية · النبض والأكسجين التقديري و HRV'**
   String get siteFingerDetail;
 
   /// No description provided for @siteWrist.
@@ -806,7 +806,7 @@ abstract class AppLocalizations {
   /// No description provided for @instructionsFinger.
   ///
   /// In ar, this message translates to:
-  /// **'حط يدك على الطاولة، وريّح إصبعك على الحساس بدون ضغط، ولا تتحرك 30 ثانية.'**
+  /// **'حط يدك على الطاولة، وريّح إصبعك على الحساس بدون ضغط، ولا تتحرك. النبض يظهر خلال ثوانٍ، و HRV يحتاج دقيقة ثبات كاملة (حتى 75 ثانية).'**
   String get instructionsFinger;
 
   /// No description provided for @instructionsWrist.
@@ -863,6 +863,12 @@ abstract class AppLocalizations {
   /// **'جودة الإشارة الآن'**
   String get liveQuality;
 
+  /// No description provided for @measureProgress.
+  ///
+  /// In ar, this message translates to:
+  /// **'تقدم القياس'**
+  String get measureProgress;
+
   /// No description provided for @firmwareMismatchFinger.
   ///
   /// In ar, this message translates to:
@@ -898,6 +904,12 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'انتهى بعد حساب HRV'**
   String get resultEndedWithHrv;
+
+  /// No description provided for @resultEndedTimeout.
+  ///
+  /// In ar, this message translates to:
+  /// **'انتهى وقت القياس'**
+  String get resultEndedTimeout;
 
   /// No description provided for @resultHrvUnavailable.
   ///

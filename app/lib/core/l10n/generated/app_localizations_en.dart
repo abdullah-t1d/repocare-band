@@ -353,7 +353,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get siteFinger => 'Finger measurement';
 
   @override
-  String get siteFingerDetail => '30 seconds · heart rate, HRV and estimated SpO2';
+  String get siteFingerDetail => 'Up to 75 seconds · heart rate, estimated SpO2 and HRV';
 
   @override
   String get siteWrist => 'Wrist measurement';
@@ -365,7 +365,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get instructionsTitle => 'Before we start';
 
   @override
-  String get instructionsFinger => 'Rest your hand on the table and lay your fingertip on the sensor without pressing. Stay still for 30 seconds.';
+  String get instructionsFinger => 'Rest your hand on the table and lay your fingertip on the sensor without pressing. Stay still: the heart rate appears within seconds, HRV needs a full minute of stillness (up to 75 seconds).';
 
   @override
   String get instructionsWrist => 'Make sure the band sits snugly one finger-width above the wrist bone, and keep your hand still on a surface for one minute.';
@@ -399,6 +399,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveQuality => 'Signal quality now';
 
   @override
+  String get measureProgress => 'Measurement progress';
+
+  @override
   String get firmwareMismatchFinger => 'The band is running the wrist sketch. For a finger measurement, upload repocare_finger.';
 
   @override
@@ -415,6 +418,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultEndedWithHrv => 'Finished once HRV was calculated';
+
+  @override
+  String get resultEndedTimeout => 'The measurement time ran out';
 
   @override
   String get resultHrvUnavailable => 'HRV not available: needs a full minute of stillness';
