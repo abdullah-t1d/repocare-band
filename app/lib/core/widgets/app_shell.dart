@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
-import '../theme/app_colors.dart';
+import '../theme/app_palette.dart';
 
 /// One entry of the main navigation.
 class AppDestination {
@@ -19,14 +19,19 @@ class AppDestination {
 }
 
 /// Frame around every page: brand header, navigation (side rail on wide
-/// screens, bottom bar on narrow ones) and the non-diagnostic footer.
+/// screens, bottom bar on narrow ones), an optional banner area and the
+/// non-diagnostic footer.
+///
+/// The layout uses directional widgets only, so it mirrors automatically
+/// between Arabic (RTL) and English (LTR).
 class AppShell extends StatelessWidget {
   const AppShell({
     required this.destinations,
     required this.selectedIndex,
     required this.onSelect,
     required this.child,
-    this.headerTrailing,
+    this.headerActions = const [],
+    this.banner,
     super.key,
   });
 
@@ -41,13 +46,17 @@ class AppShell extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final Widget child;
 
-  /// Shown at the end of the header, e.g. the connection status.
-  final Widget? headerTrailing;
+  /// Shown at the end of the header (status, language, theme).
+  final List<Widget> headerActions;
+
+  /// Shown between the header and the page, e.g. connection problems.
+  final Widget? banner;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final wide = MediaQuery.sizeOf(context).width >= railBreakpoint;
+    final width = MediaQuery.sizeOf(context).width;
+    final wide = width >= railBreakpoint;
 
     final body = Column(
       children: [
@@ -58,7 +67,8 @@ class AppShell extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: maxContentWidth),
               child: Column(
                 children: [
-                  _Header(trailing: headerTrailing),
+                  _Header(actions: headerActions, showSubtitle: width >= 640),
+                  if (banner != null) banner!,
                   Expanded(child: child),
                 ],
               ),
@@ -78,12 +88,21 @@ class AppShell extends StatelessWidget {
                 selectedIndex: selectedIndex,
                 onDestinationSelected: onSelect,
                 labelType: NavigationRailLabelType.all,
+                minWidth: 96,
+                groupAlignment: -0.85,
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Icon(Icons.favorite, color: context.palette.pulse, size: 28),
+                ),
                 destinations: [
                   for (final d in destinations)
                     NavigationRailDestination(
                       icon: Icon(d.icon),
                       selectedIcon: Icon(d.selectedIcon),
-                      label: Text(d.label(l10n)),
+                      label: SizedBox(
+                        width: 84,
+                        child: Text(d.label(l10n), textAlign: TextAlign.center, maxLines: 2),
+                      ),
                     ),
                 ],
               ),
@@ -114,27 +133,31 @@ class AppShell extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({this.trailing});
+  const _Header({required this.actions, required this.showSubtitle});
 
-  final Widget? trailing;
+  final List<Widget> actions;
+  final bool showSubtitle;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 18, 12, 14),
       child: Row(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.appTitle, style: theme.textTheme.titleLarge),
-              Text(l10n.appSubtitle, style: theme.textTheme.bodySmall),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.appTitle, style: theme.textTheme.titleLarge, textDirection: TextDirection.ltr),
+                if (showSubtitle)
+                  Text(l10n.appSubtitle,
+                      style: theme.textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
-          const Spacer(),
-          if (trailing != null) trailing!,
+          for (final a in actions) Padding(padding: const EdgeInsetsDirectional.only(start: 8), child: a),
         ],
       ),
     );
@@ -149,9 +172,7 @@ class _Footer extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.rule)),
-      ),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: context.palette.rule))),
       child: Text(
         context.l10n.footerDisclaimer,
         textAlign: TextAlign.center,

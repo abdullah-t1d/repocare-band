@@ -96,7 +96,10 @@ class BandRepository {
 
   Future<void> dispose() async {
     await disconnect();
-    await Future.wait([_events.close(), _states.close(), _failures.close()]);
+    // Not awaited, as in BandTransportBase.dispose.
+    unawaited(_events.close());
+    unawaited(_states.close());
+    unawaited(_failures.close());
   }
 
   void _attach(BandTransport transport) {
@@ -118,10 +121,14 @@ class BandRepository {
   }
 
   Future<void> _release(BandTransport transport) async {
-    for (final s in _subscriptions) {
-      await s.cancel();
-    }
+    // Cancelling takes effect at once. Not awaited, as in dispose: for
+    // broadcast streams the future belongs to the root zone and never
+    // completes under fake time, which froze reconnects in widget tests.
+    final subscriptions = [..._subscriptions];
     _subscriptions.clear();
+    for (final s in subscriptions) {
+      unawaited(s.cancel());
+    }
     if (identical(_transport, transport)) _transport = null;
     await transport.dispose();
   }

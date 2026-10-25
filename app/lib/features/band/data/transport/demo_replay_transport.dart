@@ -161,7 +161,7 @@ class DemoReplayTransport extends BandTransportBase {
   @override
   Future<void> dispose() async {
     await super.dispose();
-    await _playbackChanges.close();
+    unawaited(_playbackChanges.close());
   }
 
   void _tick() {

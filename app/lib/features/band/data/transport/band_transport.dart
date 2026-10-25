@@ -144,6 +144,10 @@ abstract class BandTransportBase implements BandTransport {
     if (_disposed) return;
     _disposed = true;
     await disconnect();
-    await Future.wait([_lines.close(), _states.close(), _failures.close()]);
+    // Not awaited: the futures only report that the done event reached the
+    // listeners, which nothing depends on.
+    unawaited(_lines.close());
+    unawaited(_states.close());
+    unawaited(_failures.close());
   }
 }
