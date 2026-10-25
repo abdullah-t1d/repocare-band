@@ -37,8 +37,15 @@ class DemoBar extends ConsumerWidget {
             children: [
               Icon(Icons.play_circle_outline, color: p.oxy),
               const SizedBox(width: 8),
-              Text('${l10n.demoPlayback} · ', style: theme.textTheme.labelMedium),
-              Text(playback.recording.title(l10n), style: theme.textTheme.titleMedium),
+              // Flexible: on a phone the recording name wraps instead of overflowing.
+              Flexible(
+                child: Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: '${l10n.demoPlayback} · ', style: theme.textTheme.labelMedium),
+                    TextSpan(text: playback.recording.title(l10n), style: theme.textTheme.titleMedium),
+                  ]),
+                ),
+              ),
             ],
           ),
           Row(

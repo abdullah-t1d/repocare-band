@@ -109,4 +109,17 @@ void main() {
     expect(tester.takeException(), isNull);
     await tearDownApp(tester, c);
   });
+
+  testWidgets('phone width: demo bar and dashboard without overflow', (tester) async {
+    final c = await pumpApp(tester, transports: demo, size: const Size(390, 844));
+    await tester.ensureVisible(find.byKey(DevicesPage.connectKey));
+    await tester.pump(); // the scroll is laid out on the next frame
+    await tester.tap(find.byKey(DevicesPage.connectKey));
+    await tester.pump();
+    await tester.pump();
+    await pumpFor(tester, const Duration(seconds: 3));
+    expect(find.byType(DemoBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tearDownApp(tester, c);
+  });
 }
