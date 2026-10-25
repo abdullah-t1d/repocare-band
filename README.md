@@ -13,8 +13,9 @@ Everything here was tested on real hardware. If you own the same sensors, this r
 | Module | Sensor | Fingertip | Wrist | Status |
 |---|---|---|---|---|
 | [Heart rate, HRV, SpO2](1_heart_rate/) | ProtoCentral Pulse 3+ (MAX30102) | ✅ Validated | ✅ Validated at rest (back of wrist) | **Done** |
-| [Skin temperature](2_temperature/) | ProtoCentral AS6221 | ⏳ Planned | ⏳ Planned | Waiting for Qwiic hub |
+| [Skin temperature](2_temperature/) | ProtoCentral AS6221 | ⏳ Planned | ⏳ Planned | Read by the combined firmware; validation pending |
 | [Motion and sleep](3_motion/) | LSM6DS3TR-C IMU (built into XIAO Sense) | — | ⏳ Planned | After temperature |
+| [Combined firmware v2.2](firmware/repocare_combined/) | MAX30102 + AS6221 on one Qwiic hub | 🧪 Validation stage | — | **Prototype**: HR, SpO2, HRV/PRV (60 s window), skin temperature |
 | [Live dashboard](dashboard/) | — | ✅ | ✅ | **Done** |
 
 ---
@@ -80,8 +81,10 @@ repocare_band/
 ├─ 1_heart_rate/          MAX30102 firmware (finger + wrist), test recordings, results
 ├─ 2_temperature/         AS6221 firmware (planned)
 ├─ 3_motion/              IMU readings: steps, activity, sleep, wear (planned)
-├─ dashboard/             Browser dashboard: live monitor (Web Serial, CSV export) + health overview (sample data for now)
-└─ docs/                  Serial protocol, troubleshooting, lessons learned
+├─ app/                   Flutter web app: devices, live dashboard, guided measurement (Web Serial or demo recordings)
+├─ dashboard/             Legacy HTML pages: live monitor (Web Serial, CSV export) + health overview prototype
+├─ docs/                  Serial protocol, troubleshooting, lessons learned
+└─ firmware/              Combined firmware v2.2 (MAX30102 + AS6221), fingertip validation stage
 ```
 
 ---
