@@ -80,7 +80,7 @@ repocare_band/
 ├─ 1_heart_rate/          MAX30102 firmware (finger + wrist), test recordings, results
 ├─ 2_temperature/         AS6221 firmware (planned)
 ├─ 3_motion/              IMU readings: steps, activity, sleep, wear (planned)
-├─ dashboard/             Browser dashboard (Web Serial), live wave + CSV export
+├─ dashboard/             Browser dashboard: live monitor (Web Serial, CSV export) + health overview (sample data for now)
 └─ docs/                  Serial protocol, troubleshooting, lessons learned
 ```
 

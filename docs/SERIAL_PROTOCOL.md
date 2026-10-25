@@ -24,7 +24,7 @@ M,<bpm>,<spo2>,<rmssd>,<contact>,<quality>,<tempC>,<led>,<saturated>,<beats>,<pi
 | `rmssd` | HRV (RMSSD), ms. v2.2: computed over a 60 s artefact-corrected window and refreshed every 10 s, so the first value appears after ~45–60 s of steady signal | `-1` |
 | `contact` | `1` = skin detected | — |
 | `quality` | 0–100 | — |
-| `tempC` | MAX30102 **chip** temperature (not body temperature) | `-99` |
+| `tempC` | Heart-rate sketches in this repo: MAX30102 **chip** temperature. Combined prototype firmware (with AS6221): **skin** temperature. Neither is core body temperature | `-99` |
 | `led` | Fixed level 1–4, or `0` in auto mode | — |
 | `saturated` | `1` = signal clipped | — |
 | `beats` | Clean beats currently stored (max 12) | — |

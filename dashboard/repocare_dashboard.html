@@ -30,6 +30,11 @@
   .primary{background:var(--ink);color:#fff;border:0;padding:10px 20px;font-weight:600}
   .primary:hover{background:#26363F}
   button:focus-visible{outline:3px solid var(--oxy);outline-offset:2px}
+  nav{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+  nav a{padding:8px 14px;font-size:14px;color:var(--ink);text-decoration:none}
+  nav a+a{border-inline-start:1px solid var(--rule)}
+  nav a[aria-current="page"]{background:var(--ink);color:#fff}
+  nav a:focus-visible{outline:3px solid var(--oxy);outline-offset:-3px}
 
   .notice{background:#FFF4E0;border:1px solid #F0D3A2;color:#5C3A00;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:14px}
   .notice[hidden]{display:none}
@@ -101,6 +106,10 @@
     <h1 class="brand">repoCare Band<small>قراءات حساس النبض MAX30102 مباشرة</small></h1>
     <div class="status"><span class="led" id="led"></span><span id="statusText">غير متصل</span></div>
     <div class="spacer"></div>
+    <nav aria-label="صفحات اللوحة">
+      <a href="repocare_overview.html">نظرة عامة</a>
+      <a href="repocare_dashboard.html" aria-current="page">المراقبة الحية (USB)</a>
+    </nav>
     <button class="primary" id="connectBtn">اتصال بالسوار</button>
   </header>
 
